@@ -69,7 +69,14 @@ AreaChart.displayName = "AreaChart"
 export const Line = React.forwardRef<
   React.ElementRef<typeof RechartsLine>,
   React.ComponentPropsWithoutRef<typeof RechartsLine>
->(({ className, ...props }, ref) => <RechartsLine activeDot={{ strokeWidth: 0, r: 6 }} {...props} ref={ref} />)
+>(({ className, ...props }, ref) => (
+  <RechartsLine 
+    activeDot={{ strokeWidth: 0, r: 6 }} 
+    {...props} 
+    // @ts-ignore - Ignoring type issues with Recharts ref forwarding
+    ref={ref} 
+  />
+))
 Line.displayName = "Line"
 
 export const Bar = React.forwardRef<
