@@ -1,0 +1,67 @@
+{
+  "classic": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "elemental": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "space": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "weather": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "animals": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "food": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "tech": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "emotions": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "fantasy": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "music": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "sports": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "sea": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "fruits": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "transport": {
+    "elements": 3,
+    "beats": [[2], [0], [1]]
+  },
+  "lizard_spock": {
+    "elements": 5,
+    "beats": [[3, 4], [0, 3], [1, 4], [2, 4], [0, 1]]
+  },
+  "well": {
+    "elements": 4,
+    "beats": [[2, 3], [0, 3], [1], []]
+  }
+}
+

@@ -1,0 +1,24 @@
+{
+  "name": "Rock Paper Scissors Simulator",
+  "short_name": "RPS Sim",
+  "description": "Interactive Rock Paper Scissors battle simulator with multiple variations",
+  "start_url": "./",
+  "display": "fullscreen",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
