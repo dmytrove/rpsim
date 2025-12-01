@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Volume2,
   VolumeX,
@@ -42,7 +43,7 @@ interface SettingsModalProps {
   isRunning: boolean
   setIsRunning: (running: boolean) => void
   variation: string
-  setVariation: (variation: any) => void
+  setVariation: (variation: string) => void
   variations: Record<string, { name: string; items: string[] }>
   showRules: () => void
   randomVariation: boolean
@@ -117,20 +118,50 @@ export function SettingsModal({
         </div>
 
         <Tabs defaultValue="simulation" className="mt-4">
-          <TabsList className="grid grid-cols-4 w-full bg-slate-800">
-            <TabsTrigger value="simulation" className="data-[state=active]:bg-slate-700">
-              <Sliders className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger value="themes" className="data-[state=active]:bg-slate-700">
-              <Palette className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger value="display" className="data-[state=active]:bg-slate-700">
-              <Monitor className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger value="controls" className="data-[state=active]:bg-slate-700">
-              <Gamepad2 className="h-5 w-5" />
-            </TabsTrigger>
-          </TabsList>
+          <TooltipProvider delayDuration={300}>
+            <TabsList className="grid grid-cols-4 w-full bg-slate-800">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="simulation" className="data-[state=active]:bg-slate-700" aria-label={t("simulation")}>
+                    <Sliders className="h-5 w-5" />
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
+                  {t("simulation")}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="themes" className="data-[state=active]:bg-slate-700" aria-label={t("themes")}>
+                    <Palette className="h-5 w-5" />
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
+                  {t("themes")}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="display" className="data-[state=active]:bg-slate-700" aria-label={t("display")}>
+                    <Monitor className="h-5 w-5" />
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
+                  {t("display")}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="controls" className="data-[state=active]:bg-slate-700" aria-label={t("controls")}>
+                    <Gamepad2 className="h-5 w-5" />
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
+                  {t("controls")}
+                </TooltipContent>
+              </Tooltip>
+            </TabsList>
+          </TooltipProvider>
 
           {/* Simulation Settings */}
           <TabsContent value="simulation" className="space-y-4 pt-4">

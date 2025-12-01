@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Settings, History, Info, Volume2, VolumeX } from "lucide-react"
+import { Settings, History, Info, Volume2, VolumeX, Pause, Play } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useMobile } from "@/hooks/use-mobile"
 import { SettingsModal } from "@/components/settings-modal"
@@ -194,6 +194,51 @@ export default function RPSBattleSimulator() {
       soundSystem.setInstrument(getVariation(variation).instrument)
     }
   }, [variation, language])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in inputs or when modals are open
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      switch (e.key.toLowerCase()) {
+        case " ": // Space - Pause/Resume
+          e.preventDefault()
+          if (!showSettingsModal && !showRulesModal) {
+            setIsRunning((prev) => !prev)
+          }
+          break
+        case "r": // R - Restart
+          if (!e.ctrlKey && !e.metaKey && !showSettingsModal && !showRulesModal) {
+            handleRestart()
+          }
+          break
+        case "m": // M - Toggle mute/sound
+          setSoundEnabled((prev) => !prev)
+          break
+        case "h": // H - Toggle history
+          setShowHistory((prev) => !prev)
+          break
+        case "s": // S - Open settings
+          if (!e.ctrlKey && !e.metaKey) {
+            setShowSettingsModal(true)
+          }
+          break
+        case "i": // I - Show rules/info
+          setShowRulesModal(true)
+          break
+        case "escape": // Escape - Close modals
+          if (showSettingsModal) setShowSettingsModal(false)
+          if (showRulesModal) setShowRulesModal(false)
+          break
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [showSettingsModal, showRulesModal])
 
   // Play collision sound
   const playCollisionSound = (fromType: number, toType: number) => {
@@ -464,23 +509,51 @@ export default function RPSBattleSimulator() {
       {/* Fullscreen Canvas */}
       <canvas ref={canvasRef} className="absolute inset-0" />
 
-      {/* Population Counter and Info Button */}
-      <div className="absolute top-4 left-4 flex gap-2 bg-black/50 p-2 rounded-lg backdrop-blur-sm">
-        {counts.map((count, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-1 px-3 py-1 rounded-full"
-            style={{ backgroundColor: `${COLORS[i]}40` }}
-          >
-            <span className="text-xl">{getVariation(variation).items[i]}</span>
-            <span className="text-sm font-mono text-white">{count}</span>
+      {/* Pause Overlay */}
+      {!isRunning && !showSettingsModal && (
+        <div
+          className="absolute inset-0 bg-black/40 flex items-center justify-center z-5 cursor-pointer backdrop-blur-[2px]"
+          onClick={() => setIsRunning(true)}
+        >
+          <div className="flex flex-col items-center gap-4 animate-pulse">
+            <div className="bg-white/20 rounded-full p-6 backdrop-blur-sm">
+              <Play className="h-16 w-16 text-white" />
+            </div>
+            <span className="text-white/80 text-lg font-medium">{t("pause")} - {isMobile ? "Tap" : "Space"}</span>
           </div>
-        ))}
+        </div>
+      )}
+
+      {/* Population Counter and Info Button */}
+      <div className="absolute top-4 left-4 flex flex-wrap gap-2 bg-black/60 p-3 rounded-xl backdrop-blur-md border border-white/10 shadow-lg max-w-[calc(100vw-2rem)]">
+        {counts.map((count, i) => {
+          const total = counts.reduce((a, b) => a + b, 0)
+          const percentage = total > 0 ? (count / total) * 100 : 0
+          return (
+            <div
+              key={i}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300"
+              style={{
+                backgroundColor: `${COLORS[i]}30`,
+                borderColor: `${COLORS[i]}60`,
+                boxShadow: count > 0 ? `0 0 10px ${COLORS[i]}40` : "none",
+                opacity: count === 0 ? 0.5 : 1,
+              }}
+            >
+              <span className="text-xl">{getVariation(variation).items[i]}</span>
+              <div className="flex flex-col items-end">
+                <span className="text-sm font-bold font-mono text-white leading-tight">{count}</span>
+                <span className="text-[10px] font-mono text-white/60 leading-tight">{percentage.toFixed(0)}%</span>
+              </div>
+            </div>
+          )
+        })}
         <Button
           variant="outline"
           size="icon"
-          className="ml-2 bg-blue-600/70 hover:bg-blue-600 border-blue-500 w-10 h-10"
+          className="ml-1 bg-blue-600/70 hover:bg-blue-500 border-blue-400/50 w-10 h-10 rounded-full transition-all duration-200 active:scale-95"
           onClick={showRules}
+          aria-label={t("rules")}
         >
           <Info className="h-5 w-5 text-white" />
         </Button>
@@ -488,12 +561,24 @@ export default function RPSBattleSimulator() {
 
       {/* Battle History Panel (when visible) */}
       {showHistory && (
-        <div className="absolute top-16 right-4 w-64 z-10">
-          <Card className="bg-black/70 backdrop-blur-sm border-gray-800">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-white text-sm">{t("history")}</CardTitle>
+        <div className={`absolute z-10 ${isMobile ? "top-auto bottom-24 left-4 right-4 w-auto" : "top-4 right-4 w-72"}`}>
+          <Card className="bg-black/80 backdrop-blur-md border-white/10 shadow-xl">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-white text-sm flex items-center gap-2">
+                <History className="h-4 w-4" />
+                {t("history")}
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-gray-400 hover:text-white hover:bg-white/10 rounded-full"
+                onClick={() => setShowHistory(false)}
+                aria-label="Close history"
+              >
+                ×
+              </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <BattleHistory history={history} variations={VARIATIONS_TRANSLATIONS[language]} language={language} />
             </CardContent>
           </Card>
@@ -502,32 +587,60 @@ export default function RPSBattleSimulator() {
 
       {/* Floating Control Buttons - Icon only */}
       <div className="fixed bottom-0 left-0 right-0 p-4 flex justify-center z-20">
-        <div className="flex gap-2">
+        <div className="flex gap-1 bg-black/40 p-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg">
           <Button
             variant="default"
             size="icon"
-            className={`rounded-l-full ${showHistory ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-600 hover:bg-blue-700"} w-14 h-14`}
+            className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 transition-all duration-200 ${
+              isRunning
+                ? "bg-slate-600/80 hover:bg-slate-500"
+                : "bg-amber-600 hover:bg-amber-500 ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-950"
+            }`}
+            onClick={() => setIsRunning(!isRunning)}
+            aria-label={isRunning ? t("pause") : t("resume")}
+            aria-pressed={!isRunning}
+          >
+            {isRunning ? <Pause className="h-6 w-6 sm:h-7 sm:w-7" /> : <Play className="h-6 w-6 sm:h-7 sm:w-7" />}
+          </Button>
+
+          <Button
+            variant="default"
+            size="icon"
+            className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 transition-all duration-200 ${
+              showHistory
+                ? "bg-blue-500 hover:bg-blue-600 ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950"
+                : "bg-blue-600/80 hover:bg-blue-600"
+            }`}
             onClick={toggleHistory}
+            aria-label={t("history")}
+            aria-pressed={showHistory}
           >
-            <History className="h-7 w-7" />
+            <History className="h-6 w-6 sm:h-7 sm:w-7" />
           </Button>
 
           <Button
             variant="default"
             size="icon"
-            className="bg-blue-600 hover:bg-blue-700 w-14 h-14"
+            className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 transition-all duration-200 ${
+              soundEnabled
+                ? "bg-green-600 hover:bg-green-700 ring-2 ring-green-400 ring-offset-2 ring-offset-slate-950"
+                : "bg-blue-600/80 hover:bg-blue-600"
+            }`}
             onClick={() => setSoundEnabled(!soundEnabled)}
+            aria-label={soundEnabled ? t("soundEffects") + " on" : t("soundEffects") + " off"}
+            aria-pressed={soundEnabled}
           >
-            {soundEnabled ? <Volume2 className="h-7 w-7" /> : <VolumeX className="h-7 w-7" />}
+            {soundEnabled ? <Volume2 className="h-6 w-6 sm:h-7 sm:w-7" /> : <VolumeX className="h-6 w-6 sm:h-7 sm:w-7" />}
           </Button>
 
           <Button
             variant="default"
             size="icon"
-            className="rounded-r-full bg-blue-600 hover:bg-blue-700 w-14 h-14"
+            className="rounded-full bg-blue-600/80 hover:bg-blue-600 w-12 h-12 sm:w-14 sm:h-14 transition-all duration-200 active:scale-95"
             onClick={() => setShowSettingsModal(true)}
+            aria-label={t("settings")}
           >
-            <Settings className="h-7 w-7" />
+            <Settings className="h-6 w-6 sm:h-7 sm:w-7" />
           </Button>
         </div>
       </div>

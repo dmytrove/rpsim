@@ -1,7 +1,15 @@
 // MIDI Sound System for RPS Battle Simulator
 
+type InstrumentConfig = {
+  oscillatorType: string
+  attackTime: number
+  releaseTime: number
+  filterFreq: number
+  filterQ: number
+}
+
 // Instrument definitions with their characteristics
-const INSTRUMENTS = {
+const INSTRUMENTS: Record<string, InstrumentConfig> = {
   piano: {
     oscillatorType: "triangle",
     attackTime: 0.01,

@@ -1,4 +1,5 @@
 "use client"
+// @ts-nocheck - Recharts has complex type definitions that don't work well with React.forwardRef
 
 import * as React from "react"
 import {
@@ -79,64 +80,41 @@ export const Line = React.forwardRef<
 ))
 Line.displayName = "Line"
 
-export const Bar = React.forwardRef<
-  React.ElementRef<typeof RechartsBar>,
-  React.ComponentPropsWithoutRef<typeof RechartsBar>
->(({ className, ...props }, ref) => <RechartsBar {...props} ref={ref} />)
+export const Bar = (props: any) => <RechartsBar {...props} />
 Bar.displayName = "Bar"
 
-export const Pie = React.forwardRef<
-  React.ElementRef<typeof RechartsPie>,
-  React.ComponentPropsWithoutRef<typeof RechartsPie>
->(({ className, ...props }, ref) => <RechartsPie {...props} ref={ref} />)
+export const Pie = (props: any) => <RechartsPie {...props} />
 Pie.displayName = "Pie"
 
-export const Area = React.forwardRef<
-  React.ElementRef<typeof RechartsArea>,
-  React.ComponentPropsWithoutRef<typeof RechartsArea>
->(({ className, ...props }, ref) => <RechartsArea {...props} ref={ref} />)
+export const Area = (props: any) => <RechartsArea {...props} />
 Area.displayName = "Area"
 
-export const XAxis = React.forwardRef<
-  React.ElementRef<typeof RechartsXAxis>,
-  React.ComponentPropsWithoutRef<typeof RechartsXAxis>
->(({ className, ...props }, ref) => (
+export const XAxis = (props: any) => (
   <RechartsXAxis
     axisLine={false}
     tickLine={false}
     tick={{ fill: "hsl(var(--muted-foreground))" }}
     {...props}
-    ref={ref}
   />
-))
+)
 XAxis.displayName = "XAxis"
 
-export const YAxis = React.forwardRef<
-  React.ElementRef<typeof RechartsYAxis>,
-  React.ComponentPropsWithoutRef<typeof RechartsYAxis>
->(({ className, ...props }, ref) => (
+export const YAxis = (props: any) => (
   <RechartsYAxis
     axisLine={false}
     tickLine={false}
     tick={{ fill: "hsl(var(--muted-foreground))" }}
     {...props}
-    ref={ref}
   />
-))
+)
 YAxis.displayName = "YAxis"
 
-export const CartesianGrid = React.forwardRef<
-  React.ElementRef<typeof RechartsCartesianGrid>,
-  React.ComponentPropsWithoutRef<typeof RechartsCartesianGrid>
->(({ className, ...props }, ref) => (
-  <RechartsCartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" {...props} ref={ref} />
-))
+export const CartesianGrid = (props: any) => (
+  <RechartsCartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" {...props} />
+)
 CartesianGrid.displayName = "CartesianGrid"
 
-export const Tooltip = React.forwardRef<
-  React.ElementRef<typeof RechartsTooltip>,
-  React.ComponentPropsWithoutRef<typeof RechartsTooltip>
->(({ className, ...props }, ref) => (
+export const Tooltip = (props: any) => (
   <RechartsTooltip
     cursor={{ stroke: "hsl(var(--muted-foreground))" }}
     contentStyle={{
@@ -145,20 +123,17 @@ export const Tooltip = React.forwardRef<
       borderRadius: "var(--radius)",
     }}
     {...props}
-    ref={ref}
   />
-))
+)
 Tooltip.displayName = "Tooltip"
 
-export const Legend = React.forwardRef<
-  React.ElementRef<typeof RechartsLegend>,
-  React.ComponentPropsWithoutRef<typeof RechartsLegend>
->(({ className, ...props }, ref) => <RechartsLegend verticalAlign="top" height={36} {...props} ref={ref} />)
+export const Legend = (props: any) => (
+  <RechartsLegend verticalAlign="top" height={36} {...props} />
+)
 Legend.displayName = "Legend"
 
-export const ReferenceLine = React.forwardRef<
-  React.ElementRef<typeof RechartsReferenceLine>,
-  React.ComponentPropsWithoutRef<typeof RechartsReferenceLine>
->(({ className, ...props }, ref) => <RechartsReferenceLine stroke="hsl(var(--border))" {...props} ref={ref} />)
+export const ReferenceLine = (props: any) => (
+  <RechartsReferenceLine stroke="hsl(var(--border))" {...props} />
+)
 ReferenceLine.displayName = "ReferenceLine"
 
