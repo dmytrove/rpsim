@@ -25,3 +25,6 @@ export const useMobile = () => {
   return isMobile
 }
 
+// Alias for compatibility
+export const useIsMobile = useMobile
+
