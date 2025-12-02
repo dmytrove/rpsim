@@ -156,7 +156,7 @@ let soundSystem: ReturnType<typeof createMidiSoundSystem> | null = null
 export default function RPSBattleSimulator() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
-  const [items, setItems] = useState<Item[]>([])
+  const itemsRef = useRef<Item[]>([]) // Use ref for animation loop
   const [counts, setCounts] = useState<number[]>([])
   const [chartData, setChartData] = useState<{ time: number; counts: number[] }[]>([])
   const [soundEnabled, setSoundEnabled] = useState(false) // Default to muted
@@ -337,7 +337,7 @@ export default function RPSBattleSimulator() {
       }
     }
 
-    setItems(newItems)
+    itemsRef.current = newItems
     setCounts(initialCounts)
     setChartData([{ time: 0, counts: initialCounts }])
     setRoundStartTime(Date.now())
@@ -404,21 +404,21 @@ export default function RPSBattleSimulator() {
       // Clear canvas
       ctx.clearRect(0, 0, width, height)
 
-      // Move items and check for collisions
-      const newItems = [...items]
+      // Move items and check for collisions - use ref directly, no copying
+      const items = itemsRef.current
       const newCounts = Array(elemCount).fill(0)
 
       // Process movement
-      for (const item of newItems) {
+      for (const item of items) {
         item.move(width, height, speed)
         newCounts[item.type]++
       }
 
       // Process collisions
-      for (let i = 0; i < newItems.length; i++) {
-        for (let j = i + 1; j < newItems.length; j++) {
-          const itemA = newItems[i]
-          const itemB = newItems[j]
+      for (let i = 0; i < items.length; i++) {
+        for (let j = i + 1; j < items.length; j++) {
+          const itemA = items[i]
+          const itemB = items[j]
 
           if (itemA.collidesWith(itemB)) {
             // Apply game rules
@@ -462,16 +462,17 @@ export default function RPSBattleSimulator() {
         }
       }
 
-      // Update chart data at specified refresh rate
+      // Update chart data and counts at specified refresh rate
       const elapsedTime = (Date.now() - roundStartTime) / 1000
       if (elapsedTime - lastUpdateRef.current >= refreshRate) {
+        setCounts([...newCounts])
         setChartData((prev) => [...prev, { time: elapsedTime, counts: [...newCounts] }])
         lastUpdateRef.current = elapsedTime
 
         // Update player ratings if players are enabled
         if (playersEnabled && players.length > 0) {
           const playerCounts = new Map<string, number>()
-          for (const item of newItems) {
+          for (const item of items) {
             if (item.playerName) {
               playerCounts.set(item.playerName, (playerCounts.get(item.playerName) || 0) + 1)
             }
@@ -493,7 +494,7 @@ export default function RPSBattleSimulator() {
       }
 
       // Draw items
-      for (const item of newItems) {
+      for (const item of items) {
         ctx.save()
         ctx.translate(item.x, item.y)
         ctx.rotate(item.rotation)
@@ -519,7 +520,7 @@ export default function RPSBattleSimulator() {
         const roundDuration = (Date.now() - roundStartTime) / 1000
 
         // Find a winning player (pick randomly from surviving items)
-        const survivingItems = newItems.filter(item => item.type === winnerType)
+        const survivingItems = items.filter(item => item.type === winnerType)
         const winnerPlayerNames = [...new Set(survivingItems.map(item => item.playerName).filter(Boolean))]
         const randomWinnerName = winnerPlayerNames.length > 0
           ? winnerPlayerNames[Math.floor(Math.random() * winnerPlayerNames.length)]
@@ -569,8 +570,7 @@ export default function RPSBattleSimulator() {
           setPendingVariation(nextVariation)
         }
 
-        // Freeze the current state for display
-        setItems(newItems)
+        // Update counts for display
         setCounts(newCounts)
 
         // Start new round after delay
@@ -589,9 +589,7 @@ export default function RPSBattleSimulator() {
           }
         }, 3000)
       } else if (!roundCompleting) {
-        // Continue animation only if not in round completion state
-        setItems(newItems)
-        setCounts(newCounts)
+        // Continue animation - update counts only at refresh interval (already done above)
         animationRef.current = requestAnimationFrame(animate)
       }
     }
@@ -601,7 +599,7 @@ export default function RPSBattleSimulator() {
     return () => {
       cancelAnimationFrame(animationRef.current)
     }
-  }, [items, speed, soundEnabled, refreshRate, variation, isRunning, randomVariation, language, roundCompleting])
+  }, [speed, soundEnabled, refreshRate, variation, isRunning, randomVariation, language, roundCompleting, playersEnabled, players])
 
   const handleRestart = () => {
     // Cancel any existing animation frame
