@@ -33,6 +33,22 @@ const AVATAR_COLORS = [
   "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e",
 ]
 
+// Sample player names by language
+const SAMPLE_NAMES = {
+  uk: [
+    "Олексій", "Марія", "Дмитро", "Анна", "Іван", "Олена", "Андрій", "Катерина",
+    "Сергій", "Наталія", "Михайло", "Юлія", "Володимир", "Тетяна", "Петро", "Ірина",
+    "Василь", "Оксана", "Максим", "Світлана", "Артем", "Вікторія", "Назар", "Дарина",
+    "Богдан", "Софія", "Олег", "Аліна", "Ярослав", "Христина", "Роман", "Людмила"
+  ],
+  en: [
+    "Alex", "Maria", "James", "Emma", "John", "Olivia", "Michael", "Sophie",
+    "David", "Emily", "Chris", "Julia", "Daniel", "Sarah", "Andrew", "Lisa",
+    "Thomas", "Anna", "Max", "Rachel", "Arthur", "Victoria", "Nathan", "Diana",
+    "Brian", "Sofia", "Oliver", "Alice", "Jason", "Christina", "Ryan", "Lucy"
+  ]
+}
+
 // Generate avatar color from name
 const getAvatarColor = (name: string): string => {
   let hash = 0
@@ -203,6 +219,14 @@ export default function RPSBattleSimulator() {
       })
     }
   }, [])
+
+  // Seed players on mount
+  useEffect(() => {
+    const names = SAMPLE_NAMES[language]
+    const shuffled = [...names].sort(() => Math.random() - 0.5)
+    const count = Math.floor(Math.random() * 8) + 8 // 8-15 players
+    setPlayers(shuffled.slice(0, count))
+  }, []) // Only run once on mount
 
   // Get current variation data based on language
   const getVariation = (key: string) => {
@@ -674,7 +698,7 @@ export default function RPSBattleSimulator() {
   }
 
   return (
-    <div className="w-screen h-screen overflow-auto bg-slate-950 relative">
+    <div className="w-screen h-screen overflow-auto relative">
       {/* Generative Background */}
       <GenerativeBackground />
 
