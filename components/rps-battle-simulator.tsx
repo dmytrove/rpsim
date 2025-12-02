@@ -182,8 +182,9 @@ export default function RPSBattleSimulator() {
   const [winningPlayer, setWinningPlayer] = useState<string | null>(null)
   const [roundWinner, setRoundWinner] = useState<{ emoji: string; duration: number; playerName?: string } | null>(null)
   const [pendingVariation, setPendingVariation] = useState<string | null>(null)
-  const [playerRatings, setPlayerRatings] = useState<{ name: string; count: number; position: number }[]>([])
+  const [playerRatings, setPlayerRatings] = useState<{ name: string; count: number; position: number; eliminated: boolean; eliminatedAt?: number }[]>([])
   const prevRatingsRef = useRef<Map<string, number>>(new Map())
+  const eliminatedPlayersRef = useRef<Map<string, number>>(new Map()) // Track eliminated players and their final position
 
   // Register service worker for PWA
   useEffect(() => {
@@ -315,8 +316,9 @@ export default function RPSBattleSimulator() {
     const newItems: Item[] = []
     const initialCounts = Array(elemCount).fill(itemCount)
 
-    // Clear winning player
+    // Clear winning player and reset eliminated tracking
     setWinningPlayer(null)
+    eliminatedPlayersRef.current = new Map()
 
     // Shuffle players for random assignment
     const shuffledPlayers = playersEnabled && players.length > 0
@@ -353,7 +355,7 @@ export default function RPSBattleSimulator() {
       }
 
       const sortedRatings = Array.from(playerCounts.entries())
-        .map(([name, count]) => ({ name, count, position: 0 }))
+        .map(([name, count]) => ({ name, count, position: 0, eliminated: false }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10)
         .map((rating, idx) => ({ ...rating, position: idx + 1 }))
@@ -479,17 +481,47 @@ export default function RPSBattleSimulator() {
             }
           }
 
-          const sortedRatings = Array.from(playerCounts.entries())
-            .map(([name, count]) => ({ name, count, position: 0 }))
+          // Get active players sorted by count
+          const activeRatings = Array.from(playerCounts.entries())
+            .map(([name, count]) => ({ name, count, position: 0, eliminated: false }))
             .sort((a, b) => b.count - a.count)
+
+          // Check for newly eliminated players (had items before, now have 0)
+          const previousCounts = prevRatingsRef.current
+          players.forEach(playerName => {
+            const currentCount = playerCounts.get(playerName) || 0
+            const wasActive = previousCounts.has(playerName) && !eliminatedPlayersRef.current.has(playerName)
+            if (wasActive && currentCount === 0 && !eliminatedPlayersRef.current.has(playerName)) {
+              // Player just got eliminated - record their position
+              const eliminationPosition = activeRatings.length + eliminatedPlayersRef.current.size + 1
+              eliminatedPlayersRef.current.set(playerName, eliminationPosition)
+            }
+          })
+
+          // Assign positions to active players
+          const activeWithPositions = activeRatings
             .slice(0, 10)
             .map((rating, idx) => ({ ...rating, position: idx + 1 }))
 
-          setPlayerRatings(sortedRatings)
+          // Add eliminated players at the end
+          const eliminatedRatings = Array.from(eliminatedPlayersRef.current.entries())
+            .map(([name, eliminatedAt]) => ({
+              name,
+              count: 0,
+              position: eliminatedAt,
+              eliminated: true,
+              eliminatedAt
+            }))
+            .sort((a, b) => (a.eliminatedAt || 0) - (b.eliminatedAt || 0))
 
-          // Store current positions for animation tracking
+          // Combine active and eliminated (limit total to 10)
+          const allRatings = [...activeWithPositions, ...eliminatedRatings].slice(0, 10)
+
+          setPlayerRatings(allRatings)
+
+          // Store current counts for next frame
           const newPositions = new Map<string, number>()
-          sortedRatings.forEach((r) => newPositions.set(r.name, r.position))
+          activeRatings.forEach((r) => newPositions.set(r.name, r.count))
           prevRatingsRef.current = newPositions
         }
       }
@@ -500,7 +532,22 @@ export default function RPSBattleSimulator() {
         ctx.translate(item.x, item.y)
         ctx.rotate(item.rotation)
 
-        // Draw only the emoji
+        // Draw player color ring if players enabled
+        if (playersEnabled && item.playerName) {
+          const playerColor = getAvatarColor(item.playerName)
+          ctx.beginPath()
+          ctx.arc(0, 0, item.size * 1.3, 0, Math.PI * 2)
+          ctx.strokeStyle = playerColor
+          ctx.lineWidth = 3
+          ctx.stroke()
+          // Add glow effect
+          ctx.shadowColor = playerColor
+          ctx.shadowBlur = 8
+          ctx.stroke()
+          ctx.shadowBlur = 0
+        }
+
+        // Draw the emoji
         ctx.font = `${item.size * 2}px Arial`
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
@@ -740,7 +787,7 @@ export default function RPSBattleSimulator() {
 
       {/* Player Leaderboard */}
       {playersEnabled && playerRatings.length > 0 && !roundWinner && (
-        <div className={`absolute z-10 ${isMobile ? "top-20 right-2 left-auto w-40" : showHistory ? "top-4 left-4 mt-20 w-56" : "top-4 right-4 w-56"}`}>
+        <div className={`absolute z-10 ${isMobile ? "top-20 right-2 left-auto w-48" : showHistory ? "top-4 left-4 mt-20 w-64" : "top-4 right-4 w-64"}`}>
           <div className="bg-black/70 backdrop-blur-md rounded-xl border border-white/10 shadow-xl overflow-hidden">
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <span className="text-lg">🏆</span>
@@ -748,54 +795,59 @@ export default function RPSBattleSimulator() {
             </div>
             <div className="p-2 space-y-1">
               {playerRatings.map((player, idx) => {
-                const isTop3 = idx < 3
-                const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : ""
-                const total = playerRatings.reduce((sum, p) => sum + p.count, 0)
+                const isTop3 = idx < 3 && !player.eliminated
+                const isEliminated = player.eliminated
+                const medal = !isEliminated ? (idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "") : "💀"
+                const total = playerRatings.filter(p => !p.eliminated).reduce((sum, p) => sum + p.count, 0)
                 const percentage = total > 0 ? (player.count / total) * 100 : 0
 
                 return (
                   <div
                     key={player.name}
                     className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-500 ${
-                      isTop3
-                        ? "bg-gradient-to-r from-amber-500/30 to-yellow-500/20 border border-amber-400/40"
-                        : "bg-white/5 border border-white/5"
+                      isEliminated
+                        ? "bg-red-900/20 border border-red-500/30 opacity-60"
+                        : isTop3
+                          ? "bg-gradient-to-r from-amber-500/30 to-yellow-500/20 border border-amber-400/40"
+                          : "bg-white/5 border border-white/5"
                     }`}
                     style={{
-                      transform: `scale(${isTop3 ? 1 : 0.95})`,
-                      boxShadow: isTop3 ? "0 0 15px rgba(251, 191, 36, 0.2)" : "none",
+                      transform: `scale(${isEliminated ? 0.9 : isTop3 ? 1 : 0.95})`,
+                      boxShadow: isTop3 && !isEliminated ? "0 0 15px rgba(251, 191, 36, 0.2)" : "none",
                     }}
                   >
-                    <span className={`${isTop3 ? "text-lg" : "text-sm text-white/50"} w-6 text-center flex-shrink-0`}>
+                    <span className={`${isEliminated ? "text-base" : isTop3 ? "text-lg" : "text-sm text-white/50"} w-6 text-center flex-shrink-0`}>
                       {medal || `${idx + 1}`}
                     </span>
                     {/* Player Avatar */}
                     <div
                       className={`flex-shrink-0 rounded-full flex items-center justify-center font-bold text-white ${
                         isTop3 ? "w-8 h-8 text-xs" : "w-6 h-6 text-[10px]"
-                      }`}
+                      } ${isEliminated ? "grayscale" : ""}`}
                       style={{
                         backgroundColor: getAvatarColor(player.name),
-                        boxShadow: isTop3 ? `0 0 8px ${getAvatarColor(player.name)}80` : "none",
+                        boxShadow: isTop3 && !isEliminated ? `0 0 8px ${getAvatarColor(player.name)}80` : "none",
                       }}
                     >
                       {getInitials(player.name)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className={`truncate ${isTop3 ? "text-white font-medium" : "text-white/70 text-sm"}`}>
+                      <div className={`${isEliminated ? "text-white/40 line-through text-sm" : isTop3 ? "text-white font-medium" : "text-white/70 text-sm"}`}>
                         {player.name}
                       </div>
-                      <div className="h-1 bg-white/10 rounded-full overflow-hidden mt-0.5">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            isTop3 ? "bg-gradient-to-r from-amber-400 to-yellow-400" : "bg-white/30"
-                          }`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
+                      {!isEliminated && (
+                        <div className="h-1 bg-white/10 rounded-full overflow-hidden mt-0.5">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isTop3 ? "bg-gradient-to-r from-amber-400 to-yellow-400" : "bg-white/30"
+                            }`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
-                    <span className={`${isTop3 ? "text-white font-bold" : "text-white/50 text-sm"} font-mono`}>
-                      {player.count}
+                    <span className={`${isEliminated ? "text-red-400/60 text-xs" : isTop3 ? "text-white font-bold" : "text-white/50 text-sm"} font-mono`}>
+                      {isEliminated ? "OUT" : player.count}
                     </span>
                   </div>
                 )
