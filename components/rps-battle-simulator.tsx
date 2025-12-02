@@ -891,7 +891,8 @@ export default function RPSBattleSimulator() {
               {playerRatings.map((player, idx) => {
                 const isTop3 = idx < 3 && !player.eliminated
                 const isEliminated = player.eliminated
-                const medal = !isEliminated ? (idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "") : "💀"
+                const medal = !isEliminated ? (idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "") : ""
+                const displayNum = isEliminated ? player.eliminatedAt || idx + 1 : idx + 1
 
                 return (
                   <div
@@ -899,11 +900,11 @@ export default function RPSBattleSimulator() {
                     className="absolute left-0 right-0 flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-all duration-300 ease-out"
                     style={{
                       transform: `translateY(${idx * 32}px)`,
-                      opacity: isEliminated ? 0.5 : 1,
+                      opacity: isEliminated ? 0.4 : 1,
                     }}
                   >
-                    <span className={`w-5 text-center flex-shrink-0 ${isTop3 ? "text-sm" : "text-xs text-white/50"}`}>
-                      {medal || `${idx + 1}`}
+                    <span className={`w-5 text-center flex-shrink-0 ${isEliminated ? "text-xs text-red-400/70" : isTop3 ? "text-sm" : "text-xs text-white/50"}`}>
+                      {medal || displayNum}
                     </span>
                     <div
                       className={`flex-shrink-0 rounded-full flex items-center justify-center font-bold text-white w-6 h-6 text-[10px] ${isEliminated ? "grayscale" : ""}`}
