@@ -443,8 +443,9 @@ export default function RPSBattleSimulator() {
                 playCollisionSound(loser.type, winner.type)
               }
 
-              // Transform loser to winner type
+              // Transform loser to winner type AND transfer ownership to winner's player
               loser.type = winner.type
+              loser.playerName = winner.playerName
 
               // Update counts
               newCounts[loser.type]++
