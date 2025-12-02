@@ -34,6 +34,11 @@ export type TranslationKey =
   | "language"
   | "english"
   | "ukrainian"
+  | "players"
+  | "enablePlayers"
+  | "playersList"
+  | "playersPlaceholder"
+  | "playersHint"
 
 // Game variations with their respective emojis, instrument settings, and verbs
 export const VARIATIONS_TRANSLATIONS = {
@@ -268,6 +273,11 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     language: "Мова",
     english: "English",
     ukrainian: "Українська",
+    players: "Гравці",
+    enablePlayers: "Увімкнути гравців",
+    playersList: "Список гравців",
+    playersPlaceholder: "Введіть імена гравців (кожне з нового рядка)",
+    playersHint: "Введіть імена підписників Instagram, кожне ім'я з нового рядка. Вони будуть випадково призначені елементам.",
   },
   en: {
     settings: "Settings",
@@ -301,6 +311,11 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     language: "Language",
     english: "English",
     ukrainian: "Українська",
+    players: "Players",
+    enablePlayers: "Enable players",
+    playersList: "Players list",
+    playersPlaceholder: "Enter player names (one per line)",
+    playersHint: "Enter Instagram subscriber names, one per line. They will be randomly assigned to items.",
   },
 }
 

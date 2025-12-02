@@ -19,7 +19,9 @@ import {
   Palette,
   Monitor,
   Gamepad2,
+  Users,
 } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 import { useMobile } from "@/hooks/use-mobile"
 import { type Language, getTranslation } from "@/lib/translations"
 import { FlagIcon } from "@/components/flag-icon"
@@ -51,6 +53,10 @@ interface SettingsModalProps {
   language: Language
   setLanguage: (lang: Language) => void
   roundCompleting: boolean
+  players: string[]
+  setPlayers: (players: string[]) => void
+  playersEnabled: boolean
+  setPlayersEnabled: (enabled: boolean) => void
 }
 
 export function SettingsModal({
@@ -80,6 +86,10 @@ export function SettingsModal({
   language,
   setLanguage,
   roundCompleting,
+  players,
+  setPlayers,
+  playersEnabled,
+  setPlayersEnabled,
 }: SettingsModalProps) {
   const isMobile = useMobile()
 
@@ -119,7 +129,7 @@ export function SettingsModal({
 
         <Tabs defaultValue="simulation" className="mt-4">
           <TooltipProvider delayDuration={300}>
-            <TabsList className="grid grid-cols-4 w-full bg-slate-800">
+            <TabsList className="grid grid-cols-5 w-full bg-slate-800">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <TabsTrigger value="simulation" className="data-[state=active]:bg-slate-700" aria-label={t("simulation")}>
@@ -138,6 +148,16 @@ export function SettingsModal({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
                   {t("themes")}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="players" className="data-[state=active]:bg-slate-700" aria-label={t("players")}>
+                    <Users className="h-5 w-5" />
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
+                  {t("players")}
                 </TooltipContent>
               </Tooltip>
               <Tooltip>
@@ -247,6 +267,39 @@ export function SettingsModal({
                 {t("randomVariation")}
               </Label>
             </div>
+          </TabsContent>
+
+          {/* Players Settings */}
+          <TabsContent value="players" className="space-y-4 pt-4">
+            <div className="flex items-center space-x-2">
+              <Switch id="players-enabled" checked={playersEnabled} onCheckedChange={setPlayersEnabled} />
+              <Label htmlFor="players-enabled" className="flex items-center gap-2 text-gray-300">
+                <Users className="h-4 w-4" />
+                {t("enablePlayers")}
+              </Label>
+            </div>
+
+            {playersEnabled && (
+              <div className="space-y-2">
+                <Label htmlFor="players-list" className="text-gray-300">
+                  {t("playersList")} ({players.length})
+                </Label>
+                <Textarea
+                  id="players-list"
+                  placeholder={t("playersPlaceholder")}
+                  className="bg-slate-800 border-gray-700 text-white min-h-[150px] resize-none"
+                  value={players.join("\n")}
+                  onChange={(e) => {
+                    const names = e.target.value
+                      .split("\n")
+                      .map((name) => name.trim())
+                      .filter((name) => name.length > 0)
+                    setPlayers(names)
+                  }}
+                />
+                <p className="text-xs text-gray-400">{t("playersHint")}</p>
+              </div>
+            )}
           </TabsContent>
 
           {/* Display Settings */}
