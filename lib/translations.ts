@@ -39,6 +39,7 @@ export type TranslationKey =
   | "playersList"
   | "playersPlaceholder"
   | "playersHint"
+  | "nextRound"
 
 // Game variations with their respective emojis, instrument settings, and verbs
 export const VARIATIONS_TRANSLATIONS = {
@@ -278,6 +279,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     playersList: "Список гравців",
     playersPlaceholder: "Введіть імена гравців (кожне з нового рядка)",
     playersHint: "Введіть імена підписників Instagram, кожне ім'я з нового рядка. Вони будуть випадково призначені елементам.",
+    nextRound: "Наступний раунд",
   },
   en: {
     settings: "Settings",
@@ -316,6 +318,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     playersList: "Players list",
     playersPlaceholder: "Enter player names (one per line)",
     playersHint: "Enter Instagram subscriber names, one per line. They will be randomly assigned to items.",
+    nextRound: "Next Round",
   },
 }
 
