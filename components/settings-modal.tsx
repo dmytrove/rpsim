@@ -2,28 +2,11 @@
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import {
-  Volume2,
-  VolumeX,
-  History,
-  Play,
-  Pause,
-  RefreshCw,
-  Info,
-  Sliders,
-  Palette,
-  Monitor,
-  Gamepad2,
-  Users,
-  Shuffle,
-} from "lucide-react"
+import { RefreshCw, Info, Users, Shuffle } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
-import { useMobile } from "@/hooks/use-mobile"
 import { type Language, getTranslation } from "@/lib/translations"
 import { FlagIcon } from "@/components/flag-icon"
 
@@ -71,13 +54,7 @@ export function SettingsModal({
   setItemSize,
   refreshRate,
   setRefreshRate,
-  soundEnabled,
-  setSoundEnabled,
-  showHistory,
-  setShowHistory,
   onRestart,
-  isRunning,
-  setIsRunning,
   variation,
   setVariation,
   variations,
@@ -92,325 +69,132 @@ export function SettingsModal({
   playersEnabled,
   setPlayersEnabled,
 }: SettingsModalProps) {
-  const isMobile = useMobile()
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key)
 
-  // Translate function
-  const t = (key: Parameters<typeof getTranslation>[1]) => {
-    return getTranslation(language, key)
-  }
-
-  // Sample player names by language
   const sampleNames = {
     uk: [
       "Олексій", "Марія", "Дмитро", "Анна", "Іван", "Олена", "Андрій", "Катерина",
-      "Сергій", "Наталія", "Михайло", "Юлія", "Володимир", "Тетяна", "Петро", "Ірина",
-      "Василь", "Оксана", "Максим", "Світлана", "Артем", "Вікторія", "Назар", "Дарина",
-      "Богдан", "Софія", "Олег", "Аліна", "Ярослав", "Христина", "Роман", "Людмила"
+      "Сергій", "Наталія", "Михайло", "Юлія", "Володимир", "Тетяна", "Петро", "Ірина"
     ],
     en: [
       "Alex", "Maria", "James", "Emma", "John", "Olivia", "Michael", "Sophie",
-      "David", "Emily", "Chris", "Julia", "Daniel", "Sarah", "Andrew", "Lisa",
-      "Thomas", "Anna", "Max", "Rachel", "Arthur", "Victoria", "Nathan", "Diana",
-      "Brian", "Sofia", "Oliver", "Alice", "Jason", "Christina", "Ryan", "Lucy"
+      "David", "Emily", "Chris", "Julia", "Daniel", "Sarah", "Andrew", "Lisa"
     ]
   }
 
-  // Generate random sample players
   const generateSamplePlayers = () => {
     const names = sampleNames[language]
     const shuffled = [...names].sort(() => Math.random() - 0.5)
-    const count = Math.floor(Math.random() * 8) + 8 // 8-15 players
+    const count = Math.floor(Math.random() * 6) + 6
     setPlayers(shuffled.slice(0, count))
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-slate-900 text-white border-gray-700 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-white">{t("simulationSettings")}</DialogTitle>
+      <DialogContent className="sm:max-w-[380px] bg-slate-900 text-white border-gray-700 max-h-[85vh] overflow-y-auto p-4">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-white text-base">{t("simulationSettings")}</DialogTitle>
         </DialogHeader>
 
-        {/* Language Switcher - More Prominent */}
-        <div className="flex justify-center mb-4">
-          <div className="flex rounded-lg overflow-hidden border border-gray-700">
-            <Button
-              variant="ghost"
-              className={`flex items-center gap-2 px-4 py-2 rounded-none ${language === "uk" ? "bg-blue-600" : "bg-slate-800 hover:bg-slate-700"}`}
-              onClick={() => setLanguage("uk")}
-            >
-              <FlagIcon country="uk" />
-              <span>{t("ukrainian")}</span>
-            </Button>
-            <Button
-              variant="ghost"
-              className={`flex items-center gap-2 px-4 py-2 rounded-none ${language === "en" ? "bg-blue-600" : "bg-slate-800 hover:bg-slate-700"}`}
-              onClick={() => setLanguage("en")}
-            >
-              <FlagIcon country="en" />
-              <span>{t("english")}</span>
+        {/* Language */}
+        <div className="flex justify-center gap-1 mb-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`px-3 py-1 ${language === "uk" ? "bg-blue-600" : "bg-slate-800"}`}
+            onClick={() => setLanguage("uk")}
+          >
+            <FlagIcon country="uk" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`px-3 py-1 ${language === "en" ? "bg-blue-600" : "bg-slate-800"}`}
+            onClick={() => setLanguage("en")}
+          >
+            <FlagIcon country="en" />
+          </Button>
+        </div>
+
+        {/* Simulation Controls */}
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-gray-400 text-xs">{t("itemCount")}: {itemCount}</Label>
+            <Slider min={1} max={300} step={1} value={[itemCount]} onValueChange={(v) => setItemCount(v[0])} />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-gray-400 text-xs">{t("speed")}: {speed.toFixed(1)}x</Label>
+            <Slider min={0.5} max={3} step={0.1} value={[speed]} onValueChange={(v) => setSpeed(v[0])} />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-gray-400 text-xs">{t("size")}: {itemSize}px</Label>
+            <Slider min={5} max={60} step={1} value={[itemSize]} onValueChange={(v) => setItemSize(v[0])} />
+          </div>
+        </div>
+
+        {/* Variation Selection */}
+        <div className="mt-3">
+          <Label className="text-gray-400 text-xs mb-2 block">{t("themes")}</Label>
+          <div className="grid grid-cols-3 gap-1.5 max-h-[120px] overflow-y-auto">
+            {Object.entries(variations).map(([key, val]) => (
+              <Button
+                key={key}
+                variant="ghost"
+                size="sm"
+                onClick={() => setVariation(key)}
+                className={`h-auto py-1.5 px-2 text-xs ${variation === key ? "bg-blue-600" : "bg-slate-800"}`}
+              >
+                <span>{val.items.slice(0, 3).join("")}</span>
+              </Button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center gap-2">
+              <Switch id="random-var" checked={randomVariation} onCheckedChange={setRandomVariation} className="scale-75" />
+              <Label htmlFor="random-var" className="text-gray-400 text-xs">{t("randomVariation")}</Label>
+            </div>
+            <Button variant="ghost" size="sm" onClick={showRules} className="text-xs px-2 py-1 h-auto">
+              <Info className="h-3 w-3 mr-1" />{t("rules")}
             </Button>
           </div>
         </div>
 
-        <Tabs defaultValue="simulation" className="mt-4">
-          <TooltipProvider delayDuration={300}>
-            <TabsList className="grid grid-cols-5 w-full bg-slate-800">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="simulation" className="data-[state=active]:bg-slate-700" aria-label={t("simulation")}>
-                    <Sliders className="h-5 w-5" />
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
-                  {t("simulation")}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="themes" className="data-[state=active]:bg-slate-700" aria-label={t("themes")}>
-                    <Palette className="h-5 w-5" />
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
-                  {t("themes")}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="players" className="data-[state=active]:bg-slate-700" aria-label={t("players")}>
-                    <Users className="h-5 w-5" />
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
-                  {t("players")}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="display" className="data-[state=active]:bg-slate-700" aria-label={t("display")}>
-                    <Monitor className="h-5 w-5" />
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
-                  {t("display")}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="controls" className="data-[state=active]:bg-slate-700" aria-label={t("controls")}>
-                    <Gamepad2 className="h-5 w-5" />
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-slate-800 text-white border-slate-700">
-                  {t("controls")}
-                </TooltipContent>
-              </Tooltip>
-            </TabsList>
-          </TooltipProvider>
-
-          {/* Simulation Settings */}
-          <TabsContent value="simulation" className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="item-count" className="text-gray-300">
-                  {t("itemCount")}: {itemCount}
-                </Label>
-              </div>
-              <Slider
-                id="item-count"
-                min={1}
-                max={300}
-                step={1}
-                value={[itemCount]}
-                onValueChange={(value) => setItemCount(value[0])}
-                className="[&_[role=slider]]:bg-blue-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="speed" className="text-gray-300">
-                  {t("speed")}: {speed.toFixed(1)}x
-                </Label>
-              </div>
-              <Slider
-                id="speed"
-                min={0.5}
-                max={3}
-                step={0.1}
-                value={[speed]}
-                onValueChange={(value) => setSpeed(value[0])}
-                className="[&_[role=slider]]:bg-blue-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="size" className="text-gray-300">
-                  {t("size")}: {itemSize}px
-                </Label>
-              </div>
-              <Slider
-                id="size"
-                min={5}
-                max={60}
-                step={1}
-                value={[itemSize]}
-                onValueChange={(value) => setItemSize(value[0])}
-                className="[&_[role=slider]]:bg-blue-500"
-              />
-            </div>
-          </TabsContent>
-
-          {/* Themes Tab */}
-          <TabsContent value="themes" className="pt-4 max-h-[50vh] overflow-y-auto">
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(variations).map(([key, val]) => (
-                <Button
-                  key={key}
-                  variant={variation === key ? "default" : "outline"}
-                  onClick={() => setVariation(key)}
-                  className={`h-auto py-2 ${variation === key ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-800 hover:bg-slate-700 border-gray-700"}`}
-                >
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs">{val.name}</span>
-                    <span className="text-lg mt-1">{val.items.join("")}</span>
-                  </div>
-                </Button>
-              ))}
-            </div>
-            <div className="mt-4 text-center">
-              <Button variant="ghost" onClick={showRules} className="bg-slate-800 hover:bg-slate-700">
-                <Info className="h-4 w-4 mr-2" />
-                {t("viewRulesDiagram")}
-              </Button>
-            </div>
-
-            <div className="mt-4 flex items-center space-x-2">
-              <Switch id="random-variation" checked={randomVariation} onCheckedChange={setRandomVariation} />
-              <Label htmlFor="random-variation" className="text-gray-300">
-                {t("randomVariation")}
+        {/* Players */}
+        <div className="mt-3 pt-3 border-t border-gray-700">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Switch id="players" checked={playersEnabled} onCheckedChange={setPlayersEnabled} className="scale-75" />
+              <Label htmlFor="players" className="text-gray-400 text-xs flex items-center gap-1">
+                <Users className="h-3 w-3" />{t("players")}
               </Label>
             </div>
-          </TabsContent>
-
-          {/* Players Settings */}
-          <TabsContent value="players" className="space-y-4 pt-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Switch id="players-enabled" checked={playersEnabled} onCheckedChange={setPlayersEnabled} />
-                <Label htmlFor="players-enabled" className="flex items-center gap-2 text-gray-300">
-                  <Users className="h-4 w-4" />
-                  {t("enablePlayers")}
-                </Label>
-              </div>
-              {playersEnabled && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={generateSamplePlayers}
-                  className="bg-slate-800 hover:bg-slate-700 border-gray-700"
-                >
-                  <Shuffle className="h-4 w-4 mr-1" />
-                  {t("generateSample")}
-                </Button>
-              )}
-            </div>
-
             {playersEnabled && (
-              <div className="space-y-2">
-                <Label htmlFor="players-list" className="text-gray-300">
-                  {t("playersList")} ({players.length})
-                </Label>
-                <Textarea
-                  id="players-list"
-                  placeholder={t("playersPlaceholder")}
-                  className="bg-slate-800 border-gray-700 text-white min-h-[150px] resize-none"
-                  value={players.join("\n")}
-                  onChange={(e) => {
-                    const names = e.target.value
-                      .split("\n")
-                      .map((name) => name.trim())
-                      .filter((name) => name.length > 0)
-                    setPlayers(names)
-                  }}
-                />
-                <p className="text-xs text-gray-400">{t("playersHint")}</p>
-              </div>
+              <Button variant="ghost" size="sm" onClick={generateSamplePlayers} className="text-xs px-2 py-1 h-auto">
+                <Shuffle className="h-3 w-3 mr-1" />{t("generateSample")}
+              </Button>
             )}
-          </TabsContent>
+          </div>
+          {playersEnabled && (
+            <Textarea
+              placeholder={t("playersPlaceholder")}
+              className="bg-slate-800 border-gray-700 text-white text-xs min-h-[80px] resize-none"
+              value={players.join("\n")}
+              onChange={(e) => setPlayers(e.target.value.split("\n").map(n => n.trim()).filter(n => n))}
+            />
+          )}
+        </div>
 
-          {/* Display Settings */}
-          <TabsContent value="display" className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="refresh" className="text-gray-300">
-                  {t("updateRate")}: {refreshRate.toFixed(1)}s
-                </Label>
-              </div>
-              <Slider
-                id="refresh"
-                min={0.1}
-                max={2}
-                step={0.1}
-                value={[refreshRate]}
-                onValueChange={(value) => setRefreshRate(value[0])}
-                className="[&_[role=slider]]:bg-blue-500"
-              />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch id="show-history" checked={showHistory} onCheckedChange={setShowHistory} />
-              <Label htmlFor="show-history" className="flex items-center gap-2 text-gray-300">
-                <History className="h-4 w-4" />
-                {t("showBattleHistory")}
-              </Label>
-            </div>
-          </TabsContent>
-
-          {/* Controls Settings */}
-          <TabsContent value="controls" className="space-y-4 pt-4">
-            <div className="flex items-center space-x-2">
-              <Switch id="sound-enabled" checked={soundEnabled} onCheckedChange={setSoundEnabled} />
-              <Label htmlFor="sound-enabled" className="flex items-center gap-2 text-gray-300">
-                {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                {t("soundEffects")}
-              </Label>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsRunning(!isRunning)}
-                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border-gray-700"
-              >
-                {isRunning ? (
-                  <>
-                    <Pause className="h-4 w-4" />
-                    {t("pause")}
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4" />
-                    {t("resume")}
-                  </>
-                )}
-              </Button>
-
-              <Button
-                variant="default"
-                onClick={onRestart}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                disabled={roundCompleting}
-              >
-                <RefreshCw className="h-4 w-4" />
-                {t("restart")}
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
+        {/* Restart Button */}
+        <Button
+          onClick={onRestart}
+          disabled={roundCompleting}
+          className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />{t("restart")}
+        </Button>
       </DialogContent>
     </Dialog>
   )
 }
-

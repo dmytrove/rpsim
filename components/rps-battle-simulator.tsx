@@ -883,69 +883,39 @@ export default function RPSBattleSimulator() {
         </div>
       )}
 
-      {/* Player Leaderboard */}
+      {/* Player Leaderboard - Racing style with position animations */}
       {playersEnabled && playerRatings.length > 0 && !roundWinner && (
-        <div className={`absolute z-10 ${isMobile ? "top-20 right-2 left-auto w-48" : showHistory ? "top-4 left-4 mt-20 w-64" : "top-4 right-4 w-64"}`}>
-          <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 overflow-hidden">
-            <div className="px-3 py-2 border-b border-white/5 flex items-center gap-2">
-              <span className="text-lg">🏆</span>
-              <span className="text-white/80 text-sm font-medium">{t("players")}</span>
-            </div>
-            <div className="p-2 space-y-1">
+        <div className={`absolute z-10 ${isMobile ? "top-4 right-2 w-44" : showHistory ? "top-4 left-4 mt-16 w-56" : "top-4 right-4 w-56"}`}>
+          <div className="bg-black/30 backdrop-blur-sm rounded-lg border border-white/5 overflow-hidden p-1.5">
+            <div className="relative" style={{ height: `${playerRatings.length * 32}px` }}>
               {playerRatings.map((player, idx) => {
                 const isTop3 = idx < 3 && !player.eliminated
                 const isEliminated = player.eliminated
                 const medal = !isEliminated ? (idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "") : "💀"
-                const total = playerRatings.filter(p => !p.eliminated).reduce((sum, p) => sum + p.count, 0)
-                const percentage = total > 0 ? (player.count / total) * 100 : 0
 
                 return (
                   <div
                     key={player.name}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-500 ${
-                      isEliminated
-                        ? "bg-red-900/20 border border-red-500/30 opacity-60"
-                        : isTop3
-                          ? "bg-gradient-to-r from-amber-500/30 to-yellow-500/20 border border-amber-400/40"
-                          : "bg-white/5 border border-white/5"
-                    }`}
+                    className="absolute left-0 right-0 flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-all duration-300 ease-out"
                     style={{
-                      transform: `scale(${isEliminated ? 0.9 : isTop3 ? 1 : 0.95})`,
-                      boxShadow: isTop3 && !isEliminated ? "0 0 15px rgba(251, 191, 36, 0.2)" : "none",
+                      transform: `translateY(${idx * 32}px)`,
+                      opacity: isEliminated ? 0.5 : 1,
                     }}
                   >
-                    <span className={`${isEliminated ? "text-base" : isTop3 ? "text-lg" : "text-sm text-white/50"} w-6 text-center flex-shrink-0`}>
+                    <span className={`w-5 text-center flex-shrink-0 ${isTop3 ? "text-sm" : "text-xs text-white/50"}`}>
                       {medal || `${idx + 1}`}
                     </span>
-                    {/* Player Avatar */}
                     <div
-                      className={`flex-shrink-0 rounded-full flex items-center justify-center font-bold text-white ${
-                        isTop3 ? "w-8 h-8 text-xs" : "w-6 h-6 text-[10px]"
-                      } ${isEliminated ? "grayscale" : ""}`}
-                      style={{
-                        backgroundColor: getAvatarColor(player.name),
-                        boxShadow: isTop3 && !isEliminated ? `0 0 8px ${getAvatarColor(player.name)}80` : "none",
-                      }}
+                      className={`flex-shrink-0 rounded-full flex items-center justify-center font-bold text-white w-6 h-6 text-[10px] ${isEliminated ? "grayscale" : ""}`}
+                      style={{ backgroundColor: getAvatarColor(player.name) }}
                     >
                       {getInitials(player.name)}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className={`${isEliminated ? "text-white/40 line-through text-sm" : isTop3 ? "text-white font-medium" : "text-white/70 text-sm"}`}>
-                        {player.name}
-                      </div>
-                      {!isEliminated && (
-                        <div className="h-1 bg-white/10 rounded-full overflow-hidden mt-0.5">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              isTop3 ? "bg-gradient-to-r from-amber-400 to-yellow-400" : "bg-white/30"
-                            }`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      )}
+                    <div className={`flex-1 min-w-0 truncate text-xs ${isEliminated ? "text-white/40 line-through" : isTop3 ? "text-white font-medium" : "text-white/70"}`}>
+                      {player.name}
                     </div>
-                    <span className={`${isEliminated ? "text-red-400/60 text-xs" : isTop3 ? "text-white font-bold" : "text-white/50 text-sm"} font-mono`}>
-                      {isEliminated ? "OUT" : player.count}
+                    <span className={`text-xs font-mono ${isEliminated ? "text-red-400/60" : isTop3 ? "text-white font-bold" : "text-white/50"}`}>
+                      {isEliminated ? "×" : player.count}
                     </span>
                   </div>
                 )
