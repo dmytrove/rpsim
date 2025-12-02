@@ -5,8 +5,8 @@ import { Canvas, useFrame } from "@react-three/fiber"
 import { EffectComposer, Bloom, Noise, Vignette } from "@react-three/postprocessing"
 import * as THREE from "three"
 
-// Floating particles component
-function Particles({ count = 200 }) {
+// Floating particles component (reduced for performance)
+function Particles({ count = 100 }) {
   const mesh = useRef<THREE.Points>(null)
   const light = useRef<THREE.PointLight>(null)
 
@@ -158,8 +158,8 @@ function Scene() {
       {/* Ambient light */}
       <ambientLight intensity={0.2} />
 
-      {/* Particles */}
-      <Particles count={300} />
+      {/* Particles (reduced for performance) */}
+      <Particles count={80} />
 
       {/* Floating orbs */}
       <FloatingOrb position={[-4, 2, -3]} color="#3b82f6" speed={0.8} />
@@ -171,16 +171,14 @@ function Scene() {
       {/* Grid */}
       <GridLines />
 
-      {/* Post-processing effects */}
+      {/* Post-processing effects (simplified for performance) */}
       <EffectComposer>
         <Bloom
-          intensity={0.5}
-          luminanceThreshold={0.2}
-          luminanceSmoothing={0.9}
-          mipmapBlur
+          intensity={0.3}
+          luminanceThreshold={0.3}
+          luminanceSmoothing={0.5}
         />
-        <Noise opacity={0.03} />
-        <Vignette eskil={false} offset={0.1} darkness={0.8} />
+        <Vignette eskil={false} offset={0.1} darkness={0.7} />
       </EffectComposer>
     </>
   )

@@ -160,6 +160,57 @@ class Item {
   }
 }
 
+// Spatial hash for O(n) collision detection
+class SpatialHash {
+  private cellSize: number
+  private cells: Map<string, Item[]>
+
+  constructor(cellSize: number) {
+    this.cellSize = cellSize
+    this.cells = new Map()
+  }
+
+  clear() {
+    this.cells.clear()
+  }
+
+  private getKey(x: number, y: number): string {
+    const cx = Math.floor(x / this.cellSize)
+    const cy = Math.floor(y / this.cellSize)
+    return `${cx},${cy}`
+  }
+
+  insert(item: Item) {
+    const key = this.getKey(item.x, item.y)
+    if (!this.cells.has(key)) {
+      this.cells.set(key, [])
+    }
+    this.cells.get(key)!.push(item)
+  }
+
+  getNearby(item: Item): Item[] {
+    const nearby: Item[] = []
+    const cx = Math.floor(item.x / this.cellSize)
+    const cy = Math.floor(item.y / this.cellSize)
+
+    // Check 3x3 grid of cells around item
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const key = `${cx + dx},${cy + dy}`
+        const cell = this.cells.get(key)
+        if (cell) {
+          for (const other of cell) {
+            if (other !== item) {
+              nearby.push(other)
+            }
+          }
+        }
+      }
+    }
+    return nearby
+  }
+}
+
 // Winner item type to preserve across variation changes
 interface Winner {
   type: number
@@ -174,6 +225,7 @@ export default function RPSBattleSimulator() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
   const itemsRef = useRef<Item[]>([]) // Use ref for animation loop
+  const spatialHashRef = useRef<SpatialHash>(new SpatialHash(50)) // Cell size ~50px
   const [counts, setCounts] = useState<number[]>([])
   const [chartData, setChartData] = useState<{ time: number; counts: number[] }[]>([])
   const [soundEnabled, setSoundEnabled] = useState(false) // Default to muted
@@ -437,55 +489,53 @@ export default function RPSBattleSimulator() {
       const items = itemsRef.current
       const newCounts = Array(elemCount).fill(0)
 
-      // Process movement
+      // Build spatial hash and process movement
+      const spatialHash = spatialHashRef.current
+      spatialHash.clear()
       for (const item of items) {
         item.move(width, height, speed)
         newCounts[item.type]++
+        spatialHash.insert(item)
       }
 
-      // Process collisions
-      for (let i = 0; i < items.length; i++) {
-        for (let j = i + 1; j < items.length; j++) {
-          const itemA = items[i]
-          const itemB = items[j]
+      // Process collisions using spatial hash (O(n) instead of O(n²))
+      const checked = new Set<string>()
+      for (const item of items) {
+        const nearby = spatialHash.getNearby(item)
+        for (const other of nearby) {
+          // Create unique pair key to avoid checking same pair twice
+          const pairKey = item.x < other.x || (item.x === other.x && item.y < other.y)
+            ? `${item.x},${item.y}-${other.x},${other.y}`
+            : `${other.x},${other.y}-${item.x},${item.y}`
+          if (checked.has(pairKey)) continue
+          checked.add(pairKey)
 
-          if (itemA.collidesWith(itemB)) {
-            // Apply game rules
-            if (itemA.type !== itemB.type) {
-              // Check if one beats the other based on variation rules
+          if (item.collidesWith(other)) {
+            if (item.type !== other.type) {
               let winner, loser
-
-              if (doesTypeBeat(itemA.type, itemB.type)) {
-                winner = itemA
-                loser = itemB
-              } else if (doesTypeBeat(itemB.type, itemA.type)) {
-                winner = itemB
-                loser = itemA
+              if (doesTypeBeat(item.type, other.type)) {
+                winner = item
+                loser = other
+              } else if (doesTypeBeat(other.type, item.type)) {
+                winner = other
+                loser = item
               } else {
-                // If neither beats the other, just bounce
-                itemA.bounceOff(itemB)
+                item.bounceOff(other)
                 continue
               }
 
-              // Play sound if enabled
               if (soundEnabled) {
                 playCollisionSound(loser.type, winner.type)
               }
 
-              // Transform loser to winner type AND transfer ownership to winner's player
               loser.type = winner.type
               loser.playerName = winner.playerName
-
-              // Update counts
               newCounts[loser.type]++
               newCounts[winner.type === loser.type ? winner.type : winner.type]--
             } else {
-              // Same type, just bounce off each other
-              itemA.bounceOff(itemB)
-
-              // Play bounce sound with same type
+              item.bounceOff(other)
               if (soundEnabled) {
-                soundSystem?.playBounceSound(itemA.type)
+                soundSystem?.playBounceSound(item.type)
               }
             }
           }
@@ -559,19 +609,13 @@ export default function RPSBattleSimulator() {
         ctx.translate(item.x, item.y)
         ctx.rotate(item.rotation)
 
-        // Draw player color ring if players enabled (subtle)
+        // Draw player color ring if players enabled (lightweight - no shadow)
         if (playersEnabled && item.playerName) {
-          const playerColor = getAvatarColor(item.playerName)
           ctx.beginPath()
-          ctx.arc(0, 0, item.size * 1.2, 0, Math.PI * 2)
-          ctx.strokeStyle = playerColor + "80" // 50% opacity
+          ctx.arc(0, 0, item.size * 1.15, 0, Math.PI * 2)
+          ctx.strokeStyle = getAvatarColor(item.playerName) + "60"
           ctx.lineWidth = 2
           ctx.stroke()
-          // Subtle glow effect
-          ctx.shadowColor = playerColor
-          ctx.shadowBlur = 3
-          ctx.stroke()
-          ctx.shadowBlur = 0
         }
 
         // Draw the emoji
