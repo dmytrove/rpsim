@@ -412,7 +412,7 @@ export default function RPSBattleSimulator() {
   // Initialize simulation on mount and when settings change
   useEffect(() => {
     initSimulation()
-  }, [itemCount, itemSize, variation])
+  }, [itemCount, itemSize, variation, players, playersEnabled])
 
   // Main animation loop
   useEffect(() => {
@@ -698,7 +698,7 @@ export default function RPSBattleSimulator() {
   }
 
   return (
-    <div className="w-screen h-screen overflow-auto relative">
+    <div className="w-screen h-screen overflow-auto relative bg-[#020617]">
       {/* Generative Background */}
       <GenerativeBackground />
 
