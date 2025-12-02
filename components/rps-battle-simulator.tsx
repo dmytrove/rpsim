@@ -35,8 +35,9 @@ class Item {
   size: number
   rotation: number
   rotationSpeed: number
+  playerName: string
 
-  constructor(x: number, y: number, type: number, size: number) {
+  constructor(x: number, y: number, type: number, size: number, playerName: string = "") {
     this.x = x
     this.y = y
     this.vx = (Math.random() - 0.5) * 2
@@ -45,6 +46,7 @@ class Item {
     this.size = size
     this.rotation = Math.random() * Math.PI * 2
     this.rotationSpeed = (Math.random() - 0.5) * 0.1
+    this.playerName = playerName
   }
 
   move(width: number, height: number, speed: number) {
@@ -120,6 +122,7 @@ class Item {
 interface Winner {
   type: number
   emoji: string
+  playerName?: string
 }
 
 // Sound system reference
@@ -149,6 +152,9 @@ export default function RPSBattleSimulator() {
   const [randomVariation, setRandomVariation] = useState(false)
   const [language, setLanguage] = useState<Language>("uk") // Default to Ukrainian
   const [roundCompleting, setRoundCompleting] = useState(false)
+  const [players, setPlayers] = useState<string[]>([])
+  const [playersEnabled, setPlayersEnabled] = useState(false)
+  const [winningPlayer, setWinningPlayer] = useState<string | null>(null)
 
   // Register service worker for PWA
   useEffect(() => {
@@ -280,12 +286,25 @@ export default function RPSBattleSimulator() {
     const newItems: Item[] = []
     const initialCounts = Array(elemCount).fill(itemCount)
 
+    // Clear winning player
+    setWinningPlayer(null)
+
+    // Shuffle players for random assignment
+    const shuffledPlayers = playersEnabled && players.length > 0
+      ? [...players].sort(() => Math.random() - 0.5)
+      : []
+    let playerIndex = 0
+
     // Create equal number of each type
     for (let type = 0; type < elemCount; type++) {
       for (let i = 0; i < itemCount; i++) {
         const x = Math.random() * (width - itemSize * 2) + itemSize
         const y = Math.random() * (height - itemSize * 2) + itemSize
-        newItems.push(new Item(x, y, type, itemSize))
+        // Assign player name if players are enabled
+        const playerName = shuffledPlayers.length > 0
+          ? shuffledPlayers[playerIndex++ % shuffledPlayers.length]
+          : ""
+        newItems.push(new Item(x, y, type, itemSize, playerName))
       }
     }
 
@@ -427,10 +446,23 @@ export default function RPSBattleSimulator() {
         const winnerType = newCounts.findIndex((count) => count > 0)
         const roundDuration = (Date.now() - roundStartTime) / 1000
 
+        // Find a winning player (pick randomly from surviving items)
+        const survivingItems = newItems.filter(item => item.type === winnerType)
+        const winnerPlayerNames = [...new Set(survivingItems.map(item => item.playerName).filter(Boolean))]
+        const randomWinnerName = winnerPlayerNames.length > 0
+          ? winnerPlayerNames[Math.floor(Math.random() * winnerPlayerNames.length)]
+          : undefined
+
         // Save winner with emoji to preserve across variation changes
         const winner: Winner = {
           type: winnerType,
           emoji: getVariation(variation).items[winnerType],
+          playerName: randomWinnerName,
+        }
+
+        // Set winning player for display
+        if (randomWinnerName) {
+          setWinningPlayer(randomWinnerName)
         }
 
         // Add to history
@@ -440,9 +472,12 @@ export default function RPSBattleSimulator() {
         ])
 
         // Show toast notification
+        const winnerText = randomWinnerName
+          ? `${winner.emoji} ${randomWinnerName} ${t("wins")} ${roundDuration.toFixed(1)} ${t("seconds")}!`
+          : `${winner.emoji} ${t("wins")} ${roundDuration.toFixed(1)} ${t("seconds")}!`
         toast({
           title: t("roundComplete"),
-          description: `${winner.emoji} ${t("wins")} ${roundDuration.toFixed(1)} ${t("seconds")}!`,
+          description: winnerText,
           variant: "default",
         })
 
@@ -510,7 +545,7 @@ export default function RPSBattleSimulator() {
       <canvas ref={canvasRef} className="absolute inset-0" />
 
       {/* Pause Overlay */}
-      {!isRunning && !showSettingsModal && (
+      {!isRunning && !showSettingsModal && !winningPlayer && (
         <div
           className="absolute inset-0 bg-black/40 flex items-center justify-center z-5 cursor-pointer backdrop-blur-[2px]"
           onClick={() => setIsRunning(true)}
@@ -520,6 +555,19 @@ export default function RPSBattleSimulator() {
               <Play className="h-16 w-16 text-white" />
             </div>
             <span className="text-white/80 text-lg font-medium">{t("pause")} - {isMobile ? "Tap" : "Space"}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Winner Overlay */}
+      {winningPlayer && roundCompleting && (
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-30 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 animate-bounce-slow">
+            <div className="text-6xl sm:text-8xl mb-2">🏆</div>
+            <div className="bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 text-transparent bg-clip-text">
+              <h1 className="text-4xl sm:text-6xl font-bold text-center px-4">{winningPlayer}</h1>
+            </div>
+            <div className="text-white/80 text-xl sm:text-2xl">{t("winner")}</div>
           </div>
         </div>
       )}
@@ -673,6 +721,10 @@ export default function RPSBattleSimulator() {
         language={language}
         setLanguage={setLanguage}
         roundCompleting={roundCompleting}
+        players={players}
+        setPlayers={setPlayers}
+        playersEnabled={playersEnabled}
+        setPlayersEnabled={setPlayersEnabled}
       />
 
       {/* Rules Modal */}
