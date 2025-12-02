@@ -25,6 +25,31 @@ const COLORS = [
   "#14b8a6", // teal
 ]
 
+// Avatar colors for player profiles
+const AVATAR_COLORS = [
+  "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e",
+  "#14b8a6", "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1",
+  "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e",
+]
+
+// Generate avatar color from name
+const getAvatarColor = (name: string): string => {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
+// Get initials from name
+const getInitials = (name: string): string => {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
 // Item class for simulation
 class Item {
   x: number
@@ -290,9 +315,8 @@ export default function RPSBattleSimulator() {
     const newItems: Item[] = []
     const initialCounts = Array(elemCount).fill(itemCount)
 
-    // Clear winning player and reset ratings
+    // Clear winning player
     setWinningPlayer(null)
-    setPlayerRatings([])
 
     // Shuffle players for random assignment
     const shuffledPlayers = playersEnabled && players.length > 0
@@ -318,6 +342,26 @@ export default function RPSBattleSimulator() {
     setChartData([{ time: 0, counts: initialCounts }])
     setRoundStartTime(Date.now())
     lastUpdateRef.current = 0
+
+    // Calculate initial player ratings
+    if (playersEnabled && players.length > 0) {
+      const playerCounts = new Map<string, number>()
+      for (const item of newItems) {
+        if (item.playerName) {
+          playerCounts.set(item.playerName, (playerCounts.get(item.playerName) || 0) + 1)
+        }
+      }
+
+      const sortedRatings = Array.from(playerCounts.entries())
+        .map(([name, count]) => ({ name, count, position: 0 }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10)
+        .map((rating, idx) => ({ ...rating, position: idx + 1 }))
+
+      setPlayerRatings(sortedRatings)
+    } else {
+      setPlayerRatings([])
+    }
   }
 
   // Update canvas size on window resize
@@ -697,7 +741,7 @@ export default function RPSBattleSimulator() {
 
       {/* Player Leaderboard */}
       {playersEnabled && playerRatings.length > 0 && !roundWinner && (
-        <div className={`absolute z-10 ${isMobile ? "top-20 right-2 left-auto w-36" : "top-4 right-4 w-56"}`}>
+        <div className={`absolute z-10 ${isMobile ? "top-20 right-2 left-auto w-40" : showHistory ? "top-4 left-4 mt-20 w-56" : "top-4 right-4 w-56"}`}>
           <div className="bg-black/70 backdrop-blur-md rounded-xl border border-white/10 shadow-xl overflow-hidden">
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <span className="text-lg">🏆</span>
@@ -723,9 +767,21 @@ export default function RPSBattleSimulator() {
                       boxShadow: isTop3 ? "0 0 15px rgba(251, 191, 36, 0.2)" : "none",
                     }}
                   >
-                    <span className={`${isTop3 ? "text-lg" : "text-sm text-white/50"} w-6 text-center`}>
+                    <span className={`${isTop3 ? "text-lg" : "text-sm text-white/50"} w-6 text-center flex-shrink-0`}>
                       {medal || `${idx + 1}`}
                     </span>
+                    {/* Player Avatar */}
+                    <div
+                      className={`flex-shrink-0 rounded-full flex items-center justify-center font-bold text-white ${
+                        isTop3 ? "w-8 h-8 text-xs" : "w-6 h-6 text-[10px]"
+                      }`}
+                      style={{
+                        backgroundColor: getAvatarColor(player.name),
+                        boxShadow: isTop3 ? `0 0 8px ${getAvatarColor(player.name)}80` : "none",
+                      }}
+                    >
+                      {getInitials(player.name)}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className={`truncate ${isTop3 ? "text-white font-medium" : "text-white/70 text-sm"}`}>
                         {player.name}

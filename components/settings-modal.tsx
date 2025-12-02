@@ -20,6 +20,7 @@ import {
   Monitor,
   Gamepad2,
   Users,
+  Shuffle,
 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useMobile } from "@/hooks/use-mobile"
@@ -96,6 +97,30 @@ export function SettingsModal({
   // Translate function
   const t = (key: Parameters<typeof getTranslation>[1]) => {
     return getTranslation(language, key)
+  }
+
+  // Sample player names by language
+  const sampleNames = {
+    uk: [
+      "Олексій", "Марія", "Дмитро", "Анна", "Іван", "Олена", "Андрій", "Катерина",
+      "Сергій", "Наталія", "Михайло", "Юлія", "Володимир", "Тетяна", "Петро", "Ірина",
+      "Василь", "Оксана", "Максим", "Світлана", "Артем", "Вікторія", "Назар", "Дарина",
+      "Богдан", "Софія", "Олег", "Аліна", "Ярослав", "Христина", "Роман", "Людмила"
+    ],
+    en: [
+      "Alex", "Maria", "James", "Emma", "John", "Olivia", "Michael", "Sophie",
+      "David", "Emily", "Chris", "Julia", "Daniel", "Sarah", "Andrew", "Lisa",
+      "Thomas", "Anna", "Max", "Rachel", "Arthur", "Victoria", "Nathan", "Diana",
+      "Brian", "Sofia", "Oliver", "Alice", "Jason", "Christina", "Ryan", "Lucy"
+    ]
+  }
+
+  // Generate random sample players
+  const generateSamplePlayers = () => {
+    const names = sampleNames[language]
+    const shuffled = [...names].sort(() => Math.random() - 0.5)
+    const count = Math.floor(Math.random() * 8) + 8 // 8-15 players
+    setPlayers(shuffled.slice(0, count))
   }
 
   return (
@@ -271,12 +296,25 @@ export function SettingsModal({
 
           {/* Players Settings */}
           <TabsContent value="players" className="space-y-4 pt-4">
-            <div className="flex items-center space-x-2">
-              <Switch id="players-enabled" checked={playersEnabled} onCheckedChange={setPlayersEnabled} />
-              <Label htmlFor="players-enabled" className="flex items-center gap-2 text-gray-300">
-                <Users className="h-4 w-4" />
-                {t("enablePlayers")}
-              </Label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Switch id="players-enabled" checked={playersEnabled} onCheckedChange={setPlayersEnabled} />
+                <Label htmlFor="players-enabled" className="flex items-center gap-2 text-gray-300">
+                  <Users className="h-4 w-4" />
+                  {t("enablePlayers")}
+                </Label>
+              </div>
+              {playersEnabled && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={generateSamplePlayers}
+                  className="bg-slate-800 hover:bg-slate-700 border-gray-700"
+                >
+                  <Shuffle className="h-4 w-4 mr-1" />
+                  {t("generateSample")}
+                </Button>
+              )}
             </div>
 
             {playersEnabled && (
