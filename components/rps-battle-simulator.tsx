@@ -155,6 +155,10 @@ export default function RPSBattleSimulator() {
   const [players, setPlayers] = useState<string[]>([])
   const [playersEnabled, setPlayersEnabled] = useState(false)
   const [winningPlayer, setWinningPlayer] = useState<string | null>(null)
+  const [roundWinner, setRoundWinner] = useState<{ emoji: string; duration: number; playerName?: string } | null>(null)
+  const [pendingVariation, setPendingVariation] = useState<string | null>(null)
+  const [playerRatings, setPlayerRatings] = useState<{ name: string; count: number; position: number }[]>([])
+  const prevRatingsRef = useRef<Map<string, number>>(new Map())
 
   // Register service worker for PWA
   useEffect(() => {
@@ -286,8 +290,9 @@ export default function RPSBattleSimulator() {
     const newItems: Item[] = []
     const initialCounts = Array(elemCount).fill(itemCount)
 
-    // Clear winning player
+    // Clear winning player and reset ratings
     setWinningPlayer(null)
+    setPlayerRatings([])
 
     // Shuffle players for random assignment
     const shuffledPlayers = playersEnabled && players.length > 0
@@ -418,6 +423,29 @@ export default function RPSBattleSimulator() {
       if (elapsedTime - lastUpdateRef.current >= refreshRate) {
         setChartData((prev) => [...prev, { time: elapsedTime, counts: [...newCounts] }])
         lastUpdateRef.current = elapsedTime
+
+        // Update player ratings if players are enabled
+        if (playersEnabled && players.length > 0) {
+          const playerCounts = new Map<string, number>()
+          for (const item of newItems) {
+            if (item.playerName) {
+              playerCounts.set(item.playerName, (playerCounts.get(item.playerName) || 0) + 1)
+            }
+          }
+
+          const sortedRatings = Array.from(playerCounts.entries())
+            .map(([name, count]) => ({ name, count, position: 0 }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10)
+            .map((rating, idx) => ({ ...rating, position: idx + 1 }))
+
+          setPlayerRatings(sortedRatings)
+
+          // Store current positions for animation tracking
+          const newPositions = new Map<string, number>()
+          sortedRatings.forEach((r) => newPositions.set(r.name, r.position))
+          prevRatingsRef.current = newPositions
+        }
       }
 
       // Draw items
@@ -486,11 +514,15 @@ export default function RPSBattleSimulator() {
           soundSystem?.playVictorySound(winnerType)
         }
 
-        // Select random variation if enabled
+        // Set round winner for overlay display
+        setRoundWinner({ emoji: winner.emoji, duration: roundDuration, playerName: randomWinnerName })
+
+        // Store random variation for next round (don't apply yet)
+        let nextVariation: string | null = null
         if (randomVariation) {
           const variationKeys = Object.keys(VARIATIONS_TRANSLATIONS[language])
-          const randomKey = variationKeys[Math.floor(Math.random() * variationKeys.length)]
-          setVariation(randomKey)
+          nextVariation = variationKeys[Math.floor(Math.random() * variationKeys.length)]
+          setPendingVariation(nextVariation)
         }
 
         // Freeze the current state for display
@@ -499,9 +531,19 @@ export default function RPSBattleSimulator() {
 
         // Start new round after delay
         setTimeout(() => {
-          initSimulation()
+          setRoundWinner(null)
+          setPendingVariation(null)
           setRoundCompleting(false)
-        }, 2000)
+
+          // Apply pending variation at start of new round
+          // The useEffect on variation change will trigger initSimulation
+          if (nextVariation) {
+            setVariation(nextVariation)
+          } else {
+            // No variation change, manually init
+            initSimulation()
+          }
+        }, 3000)
       } else if (!roundCompleting) {
         // Continue animation only if not in round completion state
         setItems(newItems)
@@ -545,7 +587,7 @@ export default function RPSBattleSimulator() {
       <canvas ref={canvasRef} className="absolute inset-0" />
 
       {/* Pause Overlay */}
-      {!isRunning && !showSettingsModal && !winningPlayer && (
+      {!isRunning && !showSettingsModal && !roundWinner && (
         <div
           className="absolute inset-0 bg-black/40 flex items-center justify-center z-5 cursor-pointer backdrop-blur-[2px]"
           onClick={() => setIsRunning(true)}
@@ -559,15 +601,35 @@ export default function RPSBattleSimulator() {
         </div>
       )}
 
-      {/* Winner Overlay */}
-      {winningPlayer && roundCompleting && (
-        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-30 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4 animate-bounce-slow">
-            <div className="text-6xl sm:text-8xl mb-2">🏆</div>
-            <div className="bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 text-transparent bg-clip-text">
-              <h1 className="text-4xl sm:text-6xl font-bold text-center px-4">{winningPlayer}</h1>
+      {/* Round Winner Overlay */}
+      {roundWinner && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30 backdrop-blur-[3px]">
+          <div className="flex flex-col items-center gap-4 animate-in zoom-in-50 duration-500">
+            <div className="text-8xl sm:text-9xl animate-bounce">
+              {roundWinner.emoji}
             </div>
-            <div className="text-white/80 text-xl sm:text-2xl">{t("winner")}</div>
+            {roundWinner.playerName && (
+              <div className="bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 text-transparent bg-clip-text">
+                <h1 className="text-3xl sm:text-5xl font-bold text-center px-4">{roundWinner.playerName}</h1>
+              </div>
+            )}
+            <div className="bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 bg-clip-text text-transparent text-2xl sm:text-3xl font-bold tracking-wide">
+              {t("winner")}
+            </div>
+            <div className="text-white/80 text-lg sm:text-xl font-medium">
+              {roundWinner.duration.toFixed(1)} {t("seconds")}
+            </div>
+            {pendingVariation && (
+              <div className="mt-4 text-white/60 text-sm flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
+                <span>{t("nextRound")}:</span>
+                <span className="text-white/90 font-medium">
+                  {getVariation(pendingVariation).name}
+                </span>
+                <span className="text-xl">
+                  {getVariation(pendingVariation).items.join("")}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -630,6 +692,61 @@ export default function RPSBattleSimulator() {
               <BattleHistory history={history} variations={VARIATIONS_TRANSLATIONS[language]} language={language} />
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Player Leaderboard */}
+      {playersEnabled && playerRatings.length > 0 && !roundWinner && (
+        <div className={`absolute z-10 ${isMobile ? "top-20 right-2 left-auto w-36" : "top-4 right-4 w-56"}`}>
+          <div className="bg-black/70 backdrop-blur-md rounded-xl border border-white/10 shadow-xl overflow-hidden">
+            <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+              <span className="text-lg">🏆</span>
+              <span className="text-white text-sm font-medium">{t("players")}</span>
+            </div>
+            <div className="p-2 space-y-1">
+              {playerRatings.map((player, idx) => {
+                const isTop3 = idx < 3
+                const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : ""
+                const total = playerRatings.reduce((sum, p) => sum + p.count, 0)
+                const percentage = total > 0 ? (player.count / total) * 100 : 0
+
+                return (
+                  <div
+                    key={player.name}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-500 ${
+                      isTop3
+                        ? "bg-gradient-to-r from-amber-500/30 to-yellow-500/20 border border-amber-400/40"
+                        : "bg-white/5 border border-white/5"
+                    }`}
+                    style={{
+                      transform: `scale(${isTop3 ? 1 : 0.95})`,
+                      boxShadow: isTop3 ? "0 0 15px rgba(251, 191, 36, 0.2)" : "none",
+                    }}
+                  >
+                    <span className={`${isTop3 ? "text-lg" : "text-sm text-white/50"} w-6 text-center`}>
+                      {medal || `${idx + 1}`}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className={`truncate ${isTop3 ? "text-white font-medium" : "text-white/70 text-sm"}`}>
+                        {player.name}
+                      </div>
+                      <div className="h-1 bg-white/10 rounded-full overflow-hidden mt-0.5">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            isTop3 ? "bg-gradient-to-r from-amber-400 to-yellow-400" : "bg-white/30"
+                          }`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                    <span className={`${isTop3 ? "text-white font-bold" : "text-white/50 text-sm"} font-mono`}>
+                      {player.count}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
 
