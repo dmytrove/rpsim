@@ -12,6 +12,7 @@ import { createMidiSoundSystem } from "@/lib/midi-sound-system"
 import { RulesModal } from "@/components/rules-modal"
 import { type Language, getTranslation, getVariationTranslation, VARIATIONS_TRANSLATIONS } from "@/lib/translations"
 import variationRules from "@/lib/variations.json"
+import { GenerativeBackground } from "@/components/generative-background"
 
 // Colors for different item types (expanded to support more items)
 const COLORS = [
@@ -178,7 +179,8 @@ export default function RPSBattleSimulator() {
   const [language, setLanguage] = useState<Language>("uk") // Default to Ukrainian
   const [roundCompleting, setRoundCompleting] = useState(false)
   const [players, setPlayers] = useState<string[]>([])
-  const [playersEnabled, setPlayersEnabled] = useState(false)
+  const [playersEnabled, setPlayersEnabled] = useState(true) // Enabled by default
+  const [showTopPanel, setShowTopPanel] = useState(false) // Hidden by default
   const [winningPlayer, setWinningPlayer] = useState<string | null>(null)
   const [roundWinner, setRoundWinner] = useState<{ emoji: string; duration: number; playerName?: string } | null>(null)
   const [pendingVariation, setPendingVariation] = useState<string | null>(null)
@@ -532,17 +534,17 @@ export default function RPSBattleSimulator() {
         ctx.translate(item.x, item.y)
         ctx.rotate(item.rotation)
 
-        // Draw player color ring if players enabled
+        // Draw player color ring if players enabled (subtle)
         if (playersEnabled && item.playerName) {
           const playerColor = getAvatarColor(item.playerName)
           ctx.beginPath()
-          ctx.arc(0, 0, item.size * 1.3, 0, Math.PI * 2)
-          ctx.strokeStyle = playerColor
-          ctx.lineWidth = 3
+          ctx.arc(0, 0, item.size * 1.2, 0, Math.PI * 2)
+          ctx.strokeStyle = playerColor + "80" // 50% opacity
+          ctx.lineWidth = 2
           ctx.stroke()
-          // Add glow effect
+          // Subtle glow effect
           ctx.shadowColor = playerColor
-          ctx.shadowBlur = 8
+          ctx.shadowBlur = 3
           ctx.stroke()
           ctx.shadowBlur = 0
         }
@@ -673,6 +675,9 @@ export default function RPSBattleSimulator() {
 
   return (
     <div className="w-screen h-screen overflow-auto bg-slate-950 relative">
+      {/* Generative Background */}
+      <GenerativeBackground />
+
       {/* Fullscreen Canvas */}
       <canvas ref={canvasRef} className="absolute inset-0" />
 
@@ -724,40 +729,64 @@ export default function RPSBattleSimulator() {
         </div>
       )}
 
-      {/* Population Counter and Info Button */}
-      <div className="absolute top-4 left-4 flex flex-wrap gap-2 bg-black/60 p-3 rounded-xl backdrop-blur-md border border-white/10 shadow-lg max-w-[calc(100vw-2rem)]">
-        {counts.map((count, i) => {
-          const total = counts.reduce((a, b) => a + b, 0)
-          const percentage = total > 0 ? (count / total) * 100 : 0
-          return (
-            <div
-              key={i}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300"
-              style={{
-                backgroundColor: `${COLORS[i]}30`,
-                borderColor: `${COLORS[i]}60`,
-                boxShadow: count > 0 ? `0 0 10px ${COLORS[i]}40` : "none",
-                opacity: count === 0 ? 0.5 : 1,
-              }}
-            >
-              <span className="text-xl">{getVariation(variation).items[i]}</span>
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-bold font-mono text-white leading-tight">{count}</span>
-                <span className="text-[10px] font-mono text-white/60 leading-tight">{percentage.toFixed(0)}%</span>
-              </div>
-            </div>
-          )
-        })}
+      {/* Population Counter Toggle Button */}
+      {!showTopPanel && (
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="ml-1 bg-blue-600/70 hover:bg-blue-500 border-blue-400/50 w-10 h-10 rounded-full transition-all duration-200 active:scale-95"
-          onClick={showRules}
-          aria-label={t("rules")}
+          className="absolute top-4 left-4 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 w-10 h-10 rounded-full transition-all duration-200 z-10"
+          onClick={() => setShowTopPanel(true)}
+          aria-label="Show stats"
         >
-          <Info className="h-5 w-5 text-white" />
+          <Info className="h-5 w-5 text-white/70" />
         </Button>
-      </div>
+      )}
+
+      {/* Population Counter and Info Button */}
+      {showTopPanel && (
+        <div className="absolute top-4 left-4 flex flex-wrap gap-2 bg-black/60 p-3 rounded-xl backdrop-blur-md border border-white/10 shadow-lg max-w-[calc(100vw-2rem)] z-10">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-8 h-8 rounded-full hover:bg-white/10 text-white/60 hover:text-white"
+            onClick={() => setShowTopPanel(false)}
+            aria-label="Hide stats"
+          >
+            ×
+          </Button>
+          {counts.map((count, i) => {
+            const total = counts.reduce((a, b) => a + b, 0)
+            const percentage = total > 0 ? (count / total) * 100 : 0
+            return (
+              <div
+                key={i}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300"
+                style={{
+                  backgroundColor: `${COLORS[i]}30`,
+                  borderColor: `${COLORS[i]}60`,
+                  boxShadow: count > 0 ? `0 0 10px ${COLORS[i]}40` : "none",
+                  opacity: count === 0 ? 0.5 : 1,
+                }}
+              >
+                <span className="text-xl">{getVariation(variation).items[i]}</span>
+                <div className="flex flex-col items-end">
+                  <span className="text-sm font-bold font-mono text-white leading-tight">{count}</span>
+                  <span className="text-[10px] font-mono text-white/60 leading-tight">{percentage.toFixed(0)}%</span>
+                </div>
+              </div>
+            )
+          })}
+          <Button
+            variant="outline"
+            size="icon"
+            className="ml-1 bg-blue-600/70 hover:bg-blue-500 border-blue-400/50 w-10 h-10 rounded-full transition-all duration-200 active:scale-95"
+            onClick={showRules}
+            aria-label={t("rules")}
+          >
+            <Info className="h-5 w-5 text-white" />
+          </Button>
+        </div>
+      )}
 
       {/* Battle History Panel (when visible) */}
       {showHistory && (
