@@ -219,7 +219,7 @@ export function SettingsModal({
               <Slider
                 id="item-count"
                 min={1}
-                max={20}
+                max={300}
                 step={1}
                 value={[itemCount]}
                 onValueChange={(value) => setItemCount(value[0])}
