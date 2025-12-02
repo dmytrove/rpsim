@@ -315,9 +315,8 @@ export default function RPSBattleSimulator() {
     const newItems: Item[] = []
     const initialCounts = Array(elemCount).fill(itemCount)
 
-    // Clear winning player and reset ratings
+    // Clear winning player
     setWinningPlayer(null)
-    setPlayerRatings([])
 
     // Shuffle players for random assignment
     const shuffledPlayers = playersEnabled && players.length > 0
@@ -343,6 +342,26 @@ export default function RPSBattleSimulator() {
     setChartData([{ time: 0, counts: initialCounts }])
     setRoundStartTime(Date.now())
     lastUpdateRef.current = 0
+
+    // Calculate initial player ratings
+    if (playersEnabled && players.length > 0) {
+      const playerCounts = new Map<string, number>()
+      for (const item of newItems) {
+        if (item.playerName) {
+          playerCounts.set(item.playerName, (playerCounts.get(item.playerName) || 0) + 1)
+        }
+      }
+
+      const sortedRatings = Array.from(playerCounts.entries())
+        .map(([name, count]) => ({ name, count, position: 0 }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10)
+        .map((rating, idx) => ({ ...rating, position: idx + 1 }))
+
+      setPlayerRatings(sortedRatings)
+    } else {
+      setPlayerRatings([])
+    }
   }
 
   // Update canvas size on window resize
@@ -722,7 +741,7 @@ export default function RPSBattleSimulator() {
 
       {/* Player Leaderboard */}
       {playersEnabled && playerRatings.length > 0 && !roundWinner && (
-        <div className={`absolute z-10 ${isMobile ? "top-20 right-2 left-auto w-36" : "top-4 right-4 w-56"}`}>
+        <div className={`absolute z-10 ${isMobile ? "top-20 right-2 left-auto w-40" : showHistory ? "top-4 left-4 mt-20 w-56" : "top-4 right-4 w-56"}`}>
           <div className="bg-black/70 backdrop-blur-md rounded-xl border border-white/10 shadow-xl overflow-hidden">
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <span className="text-lg">🏆</span>
