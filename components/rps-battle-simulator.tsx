@@ -160,6 +160,57 @@ class Item {
   }
 }
 
+// Spatial hash for O(n) collision detection
+class SpatialHash {
+  private cellSize: number
+  private cells: Map<string, Item[]>
+
+  constructor(cellSize: number) {
+    this.cellSize = cellSize
+    this.cells = new Map()
+  }
+
+  clear() {
+    this.cells.clear()
+  }
+
+  private getKey(x: number, y: number): string {
+    const cx = Math.floor(x / this.cellSize)
+    const cy = Math.floor(y / this.cellSize)
+    return `${cx},${cy}`
+  }
+
+  insert(item: Item) {
+    const key = this.getKey(item.x, item.y)
+    if (!this.cells.has(key)) {
+      this.cells.set(key, [])
+    }
+    this.cells.get(key)!.push(item)
+  }
+
+  getNearby(item: Item): Item[] {
+    const nearby: Item[] = []
+    const cx = Math.floor(item.x / this.cellSize)
+    const cy = Math.floor(item.y / this.cellSize)
+
+    // Check 3x3 grid of cells around item
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const key = `${cx + dx},${cy + dy}`
+        const cell = this.cells.get(key)
+        if (cell) {
+          for (const other of cell) {
+            if (other !== item) {
+              nearby.push(other)
+            }
+          }
+        }
+      }
+    }
+    return nearby
+  }
+}
+
 // Winner item type to preserve across variation changes
 interface Winner {
   type: number
@@ -174,6 +225,7 @@ export default function RPSBattleSimulator() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
   const itemsRef = useRef<Item[]>([]) // Use ref for animation loop
+  const spatialHashRef = useRef<SpatialHash>(new SpatialHash(50)) // Cell size ~50px
   const [counts, setCounts] = useState<number[]>([])
   const [chartData, setChartData] = useState<{ time: number; counts: number[] }[]>([])
   const [soundEnabled, setSoundEnabled] = useState(false) // Default to muted
@@ -197,6 +249,7 @@ export default function RPSBattleSimulator() {
   const [players, setPlayers] = useState<string[]>([])
   const [playersEnabled, setPlayersEnabled] = useState(true) // Enabled by default
   const [showTopPanel, setShowTopPanel] = useState(false) // Hidden by default
+  const [showBottomPanel, setShowBottomPanel] = useState(false) // Hidden by default
   const [winningPlayer, setWinningPlayer] = useState<string | null>(null)
   const [roundWinner, setRoundWinner] = useState<{ emoji: string; duration: number; playerName?: string } | null>(null)
   const [pendingVariation, setPendingVariation] = useState<string | null>(null)
@@ -436,55 +489,53 @@ export default function RPSBattleSimulator() {
       const items = itemsRef.current
       const newCounts = Array(elemCount).fill(0)
 
-      // Process movement
+      // Build spatial hash and process movement
+      const spatialHash = spatialHashRef.current
+      spatialHash.clear()
       for (const item of items) {
         item.move(width, height, speed)
         newCounts[item.type]++
+        spatialHash.insert(item)
       }
 
-      // Process collisions
-      for (let i = 0; i < items.length; i++) {
-        for (let j = i + 1; j < items.length; j++) {
-          const itemA = items[i]
-          const itemB = items[j]
+      // Process collisions using spatial hash (O(n) instead of O(n²))
+      const checked = new Set<string>()
+      for (const item of items) {
+        const nearby = spatialHash.getNearby(item)
+        for (const other of nearby) {
+          // Create unique pair key to avoid checking same pair twice
+          const pairKey = item.x < other.x || (item.x === other.x && item.y < other.y)
+            ? `${item.x},${item.y}-${other.x},${other.y}`
+            : `${other.x},${other.y}-${item.x},${item.y}`
+          if (checked.has(pairKey)) continue
+          checked.add(pairKey)
 
-          if (itemA.collidesWith(itemB)) {
-            // Apply game rules
-            if (itemA.type !== itemB.type) {
-              // Check if one beats the other based on variation rules
+          if (item.collidesWith(other)) {
+            if (item.type !== other.type) {
               let winner, loser
-
-              if (doesTypeBeat(itemA.type, itemB.type)) {
-                winner = itemA
-                loser = itemB
-              } else if (doesTypeBeat(itemB.type, itemA.type)) {
-                winner = itemB
-                loser = itemA
+              if (doesTypeBeat(item.type, other.type)) {
+                winner = item
+                loser = other
+              } else if (doesTypeBeat(other.type, item.type)) {
+                winner = other
+                loser = item
               } else {
-                // If neither beats the other, just bounce
-                itemA.bounceOff(itemB)
+                item.bounceOff(other)
                 continue
               }
 
-              // Play sound if enabled
               if (soundEnabled) {
                 playCollisionSound(loser.type, winner.type)
               }
 
-              // Transform loser to winner type AND transfer ownership to winner's player
               loser.type = winner.type
               loser.playerName = winner.playerName
-
-              // Update counts
               newCounts[loser.type]++
               newCounts[winner.type === loser.type ? winner.type : winner.type]--
             } else {
-              // Same type, just bounce off each other
-              itemA.bounceOff(itemB)
-
-              // Play bounce sound with same type
+              item.bounceOff(other)
               if (soundEnabled) {
-                soundSystem?.playBounceSound(itemA.type)
+                soundSystem?.playBounceSound(item.type)
               }
             }
           }
@@ -558,19 +609,13 @@ export default function RPSBattleSimulator() {
         ctx.translate(item.x, item.y)
         ctx.rotate(item.rotation)
 
-        // Draw player color ring if players enabled (subtle)
+        // Draw player color ring if players enabled (lightweight - no shadow)
         if (playersEnabled && item.playerName) {
-          const playerColor = getAvatarColor(item.playerName)
           ctx.beginPath()
-          ctx.arc(0, 0, item.size * 1.2, 0, Math.PI * 2)
-          ctx.strokeStyle = playerColor + "80" // 50% opacity
+          ctx.arc(0, 0, item.size * 1.15, 0, Math.PI * 2)
+          ctx.strokeStyle = getAvatarColor(item.playerName) + "60"
           ctx.lineWidth = 2
           ctx.stroke()
-          // Subtle glow effect
-          ctx.shadowColor = playerColor
-          ctx.shadowBlur = 3
-          ctx.stroke()
-          ctx.shadowBlur = 0
         }
 
         // Draw the emoji
@@ -841,10 +886,10 @@ export default function RPSBattleSimulator() {
       {/* Player Leaderboard */}
       {playersEnabled && playerRatings.length > 0 && !roundWinner && (
         <div className={`absolute z-10 ${isMobile ? "top-20 right-2 left-auto w-48" : showHistory ? "top-4 left-4 mt-20 w-64" : "top-4 right-4 w-64"}`}>
-          <div className="bg-black/70 backdrop-blur-md rounded-xl border border-white/10 shadow-xl overflow-hidden">
-            <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+          <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 overflow-hidden">
+            <div className="px-3 py-2 border-b border-white/5 flex items-center gap-2">
               <span className="text-lg">🏆</span>
-              <span className="text-white text-sm font-medium">{t("players")}</span>
+              <span className="text-white/80 text-sm font-medium">{t("players")}</span>
             </div>
             <div className="p-2 space-y-1">
               {playerRatings.map((player, idx) => {
@@ -910,65 +955,90 @@ export default function RPSBattleSimulator() {
         </div>
       )}
 
+      {/* Bottom Panel Toggle Button */}
+      {!showBottomPanel && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed bottom-4 right-4 bg-black/30 hover:bg-black/50 backdrop-blur-sm border border-white/10 w-10 h-10 rounded-full z-20"
+          onClick={() => setShowBottomPanel(true)}
+          aria-label="Show controls"
+        >
+          <Settings className="h-5 w-5 text-white/70" />
+        </Button>
+      )}
+
       {/* Floating Control Buttons - Icon only */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 flex justify-center z-20">
-        <div className="flex gap-1 bg-black/40 p-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg">
-          <Button
-            variant="default"
-            size="icon"
-            className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 transition-all duration-200 ${
-              isRunning
-                ? "bg-slate-600/80 hover:bg-slate-500"
-                : "bg-amber-600 hover:bg-amber-500 ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-950"
-            }`}
-            onClick={() => setIsRunning(!isRunning)}
-            aria-label={isRunning ? t("pause") : t("resume")}
-            aria-pressed={!isRunning}
-          >
-            {isRunning ? <Pause className="h-6 w-6 sm:h-7 sm:w-7" /> : <Play className="h-6 w-6 sm:h-7 sm:w-7" />}
-          </Button>
+      {showBottomPanel && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 flex justify-center z-20">
+          <div className="flex gap-1 bg-black/30 p-1.5 rounded-full backdrop-blur-sm border border-white/10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full w-10 h-10 hover:bg-white/10 text-white/60"
+              onClick={() => setShowBottomPanel(false)}
+              aria-label="Hide controls"
+            >
+              ×
+            </Button>
 
-          <Button
-            variant="default"
-            size="icon"
-            className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 transition-all duration-200 ${
-              showHistory
-                ? "bg-blue-500 hover:bg-blue-600 ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950"
-                : "bg-blue-600/80 hover:bg-blue-600"
-            }`}
-            onClick={toggleHistory}
-            aria-label={t("history")}
-            aria-pressed={showHistory}
-          >
-            <History className="h-6 w-6 sm:h-7 sm:w-7" />
-          </Button>
+            <Button
+              variant="default"
+              size="icon"
+              className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 ${
+                isRunning
+                  ? "bg-slate-600/60 hover:bg-slate-500/60"
+                  : "bg-amber-600/80 hover:bg-amber-500"
+              }`}
+              onClick={() => setIsRunning(!isRunning)}
+              aria-label={isRunning ? t("pause") : t("resume")}
+              aria-pressed={!isRunning}
+            >
+              {isRunning ? <Pause className="h-6 w-6 sm:h-7 sm:w-7" /> : <Play className="h-6 w-6 sm:h-7 sm:w-7" />}
+            </Button>
 
-          <Button
-            variant="default"
-            size="icon"
-            className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 transition-all duration-200 ${
-              soundEnabled
-                ? "bg-green-600 hover:bg-green-700 ring-2 ring-green-400 ring-offset-2 ring-offset-slate-950"
-                : "bg-blue-600/80 hover:bg-blue-600"
-            }`}
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            aria-label={soundEnabled ? t("soundEffects") + " on" : t("soundEffects") + " off"}
-            aria-pressed={soundEnabled}
-          >
-            {soundEnabled ? <Volume2 className="h-6 w-6 sm:h-7 sm:w-7" /> : <VolumeX className="h-6 w-6 sm:h-7 sm:w-7" />}
-          </Button>
+            <Button
+              variant="default"
+              size="icon"
+              className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 ${
+                showHistory
+                  ? "bg-blue-500/80 hover:bg-blue-600"
+                  : "bg-blue-600/60 hover:bg-blue-600"
+              }`}
+              onClick={toggleHistory}
+              aria-label={t("history")}
+              aria-pressed={showHistory}
+            >
+              <History className="h-6 w-6 sm:h-7 sm:w-7" />
+            </Button>
 
-          <Button
-            variant="default"
-            size="icon"
-            className="rounded-full bg-blue-600/80 hover:bg-blue-600 w-12 h-12 sm:w-14 sm:h-14 transition-all duration-200 active:scale-95"
-            onClick={() => setShowSettingsModal(true)}
-            aria-label={t("settings")}
-          >
-            <Settings className="h-6 w-6 sm:h-7 sm:w-7" />
-          </Button>
+            <Button
+              variant="default"
+              size="icon"
+              className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 ${
+                soundEnabled
+                  ? "bg-green-600/80 hover:bg-green-700"
+                  : "bg-blue-600/60 hover:bg-blue-600"
+              }`}
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              aria-label={soundEnabled ? t("soundEffects") + " on" : t("soundEffects") + " off"}
+              aria-pressed={soundEnabled}
+            >
+              {soundEnabled ? <Volume2 className="h-6 w-6 sm:h-7 sm:w-7" /> : <VolumeX className="h-6 w-6 sm:h-7 sm:w-7" />}
+            </Button>
+
+            <Button
+              variant="default"
+              size="icon"
+              className="rounded-full bg-blue-600/60 hover:bg-blue-600 w-12 h-12 sm:w-14 sm:h-14"
+              onClick={() => setShowSettingsModal(true)}
+              aria-label={t("settings")}
+            >
+              <Settings className="h-6 w-6 sm:h-7 sm:w-7" />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Settings Modal */}
       <SettingsModal
